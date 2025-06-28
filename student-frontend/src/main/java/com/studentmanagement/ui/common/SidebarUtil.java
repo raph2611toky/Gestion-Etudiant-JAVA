@@ -3,9 +3,7 @@ package com.studentmanagement.ui.common;
 import com.studentmanagement.model.ResponsableResponse;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 
 public class SidebarUtil {
     private static final Color SIDEBAR_COLOR = new Color(52, 73, 94);
@@ -30,9 +28,9 @@ public class SidebarUtil {
         sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
         sidebar.add(createMenuButton("👥 Étudiants", "Students".equals(activeMenu), _ -> mainWindow.showPanel("Students")));
         sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
-        sidebar.add(createMenuButton("📊 Statistiques", "Statistics".equals(activeMenu), null));
+        sidebar.add(createMenuButton("📊 Notes", "Grades".equals(activeMenu), _ -> mainWindow.showPanel("Grades")));
         sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
-        sidebar.add(createMenuButton("⚙️ Paramètres", "Settings".equals(activeMenu), null));
+        sidebar.add(createMenuButton("⚙️ Paramètres", "Settings".equals(activeMenu), _ -> mainWindow.showPanel("Settings")));
 
         sidebar.add(Box.createVerticalGlue());
 
@@ -102,38 +100,46 @@ public class SidebarUtil {
     }
 
     private static JButton createMenuButton(String text, boolean isActive, ActionListener action) {
-        JButton button = new JButton(text);
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (getModel().isRollover() && !isActive) {
+                    g2d.setColor(HOVER_COLOR);
+                } else {
+                    g2d.setColor(getBackground());
+                }
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
         button.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         button.setForeground(Color.WHITE);
         button.setBackground(isActive ? PRIMARY_COLOR : SIDEBAR_COLOR);
         button.setFocusPainted(false);
         button.setBorderPainted(false);
-        button.setContentAreaFilled(true);
+        button.setContentAreaFilled(false);
         button.setOpaque(true);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setMaximumSize(new Dimension(220, 40));
-        button.setPreferredSize(new Dimension(220, 40));
-        button.setHorizontalAlignment(SwingConstants.LEFT);
+        button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
         button.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-
-        if (action != null) {
-            button.addActionListener(action);
-        }
+        button.setHorizontalAlignment(SwingConstants.LEFT);
+        button.addActionListener(action);
 
         button.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseEntered(MouseEvent evt) {
+            public void mouseEntered(MouseEvent e) {
                 if (!isActive) {
                     button.setBackground(HOVER_COLOR);
                 }
             }
 
             @Override
-            public void mouseExited(MouseEvent evt) {
-                if (!isActive) {
-                    button.setBackground(SIDEBAR_COLOR);
-                }
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(isActive ? PRIMARY_COLOR : SIDEBAR_COLOR);
             }
         });
 
@@ -141,58 +147,69 @@ public class SidebarUtil {
     }
 
     private static void showProfileDialog(MainWindow mainWindow, ResponsableResponse responsable) {
-        JDialog profileDialog = new JDialog(mainWindow, "Profil Responsable", true);
-        profileDialog.setLayout(new BorderLayout());
-        profileDialog.setSize(400, 300);
-        profileDialog.setLocationRelativeTo(mainWindow);
+        JDialog dialog = new JDialog(mainWindow, "Profil Utilisateur", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(400, 300);
+        dialog.setLocationRelativeTo(mainWindow);
 
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        formPanel.setBackground(Color.WHITE);
+        JPanel contentPanel = new JPanel(new GridBagLayout());
+        contentPanel.setBackground(new Color(245, 247, 250));
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
 
-        JLabel titleLabel = new JLabel("Profil");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        titleLabel.setForeground(PRIMARY_COLOR);
+        JLabel nameLabel = new JLabel("Nom: " + responsable.getPrenom() + " " + responsable.getNom());
+        nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         gbc.gridx = 0;
         gbc.gridy = 0;
-        gbc.gridwidth = 2;
-        formPanel.add(titleLabel, gbc);
+        contentPanel.add(nameLabel, gbc);
 
-        gbc.gridwidth = 1;
+        JLabel emailLabel = new JLabel("Email: " + responsable.getEmail());
+        emailLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         gbc.gridy = 1;
-        formPanel.add(new JLabel("Prénom:"), gbc);
-        gbc.gridx = 1;
-        formPanel.add(new JLabel(responsable.getPrenom()), gbc);
+        contentPanel.add(emailLabel, gbc);
 
-        gbc.gridx = 0;
+        JLabel idLabel = new JLabel("ID: " + responsable.getId());
+        idLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         gbc.gridy = 2;
-        formPanel.add(new JLabel("Nom:"), gbc);
-        gbc.gridx = 1;
-        formPanel.add(new JLabel(responsable.getNom()), gbc);
+        contentPanel.add(idLabel, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = 3;
-        formPanel.add(new JLabel("Email:"), gbc);
-        gbc.gridx = 1;
-        formPanel.add(new JLabel(responsable.getEmail()), gbc);
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBackground(new Color(245, 247, 250));
 
-        JButton closeButton = new JButton("Fermer");
-        closeButton.setBackground(PRIMARY_COLOR);
+        JButton closeButton = new JButton("Fermer") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (getModel().isPressed()) {
+                    g2d.setColor(PRIMARY_COLOR.darker());
+                } else if (getModel().isRollover()) {
+                    g2d.setColor(PRIMARY_COLOR.brighter());
+                } else {
+                    g2d.setColor(PRIMARY_COLOR);
+                }
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        closeButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
         closeButton.setForeground(Color.WHITE);
-        closeButton.setFocusPainted(false);
+        closeButton.setContentAreaFilled(false);
         closeButton.setBorderPainted(false);
-        closeButton.addActionListener(_ -> profileDialog.dispose());
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-        formPanel.add(closeButton, gbc);
+        closeButton.setFocusPainted(false);
+        closeButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        closeButton.addActionListener(_ -> dialog.dispose());
 
-        profileDialog.add(formPanel, BorderLayout.CENTER);
-        profileDialog.setVisible(true);
+        buttonPanel.add(closeButton);
+
+        dialog.add(contentPanel, BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        dialog.setVisible(true);
     }
 }

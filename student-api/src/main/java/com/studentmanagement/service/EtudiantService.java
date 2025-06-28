@@ -2,8 +2,12 @@ package com.studentmanagement.service;
 
 import com.studentmanagement.dto.EtudiantDTO;
 import com.studentmanagement.model.Etudiant;
+import com.studentmanagement.model.Niveau;
+import com.studentmanagement.model.Parcours;
 import com.studentmanagement.model.Responsable;
 import com.studentmanagement.repository.EtudiantRepository;
+import com.studentmanagement.repository.NiveauRepository;
+import com.studentmanagement.repository.ParcoursRepository;
 import com.studentmanagement.repository.ResponsableRepository;
 import com.studentmanagement.utils.FileStorageUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +30,17 @@ public class EtudiantService {
     private ResponsableRepository responsableRepository;
 
     @Autowired
+    private NiveauRepository niveauRepository;
+
+    @Autowired
+    private ParcoursRepository parcoursRepository;
+
+    @Autowired
     private FileStorageUtil fileStorageUtil;
 
     @Value("${server.base-url}")
     private String baseUrl;
 
-    // Helper method to map Etudiant to EtudiantDTO
     private EtudiantDTO mapToDTO(Etudiant etudiant) {
         EtudiantDTO dto = new EtudiantDTO();
         dto.setId(etudiant.getId());
@@ -44,16 +53,22 @@ public class EtudiantService {
         dto.setPhoto(etudiant.getPhoto());
         dto.setPhoto_url(etudiant.getPhoto() != null ? baseUrl + etudiant.getPhoto() : null);
         dto.setResponsableId(etudiant.getResponsable().getId());
+        dto.setNiveauId(etudiant.getNiveau() != null ? etudiant.getNiveau().getId() : null);
+        dto.setParcoursId(etudiant.getParcours() != null ? etudiant.getParcours().getId() : null);
         return dto;
     }
 
     public EtudiantDTO addEtudiant(String matricule, String prenom, String nom, String email, String adresse,
-                                   String niveauClasse, MultipartFile photo, String responsableId) throws IOException {
+                                   String niveauId, String parcoursId, MultipartFile photo, String responsableId, String niveauClasse) throws IOException {
         if (etudiantRepository.findByMatricule(matricule).isPresent()) {
             throw new IllegalArgumentException("Matricule déjà utilisé.");
         }
         Responsable responsable = responsableRepository.findById(responsableId)
                 .orElseThrow(() -> new IllegalArgumentException("Responsable non trouvé."));
+        Niveau niveau = niveauId != null ? niveauRepository.findById(niveauId)
+                .orElseThrow(() -> new IllegalArgumentException("Niveau non trouvé.")) : null;
+        Parcours parcours = parcoursId != null ? parcoursRepository.findById(parcoursId)
+                .orElseThrow(() -> new IllegalArgumentException("Parcours non trouvé.")) : null;
 
         Etudiant etudiant = new Etudiant();
         etudiant.setMatricule(matricule);
@@ -62,6 +77,8 @@ public class EtudiantService {
         etudiant.setEmail(email);
         etudiant.setAdresse(adresse);
         etudiant.setNiveauClasse(niveauClasse);
+        etudiant.setNiveau(niveau);
+        etudiant.setParcours(parcours);
         if (photo != null && !photo.isEmpty()) {
             etudiant.setPhoto(fileStorageUtil.storeFile(photo));
         }
@@ -83,7 +100,7 @@ public class EtudiantService {
     }
 
     public EtudiantDTO updateEtudiant(String id, String matricule, String prenom, String nom, String email,
-                                     String adresse, String niveauClasse, MultipartFile photo, String responsableId) throws IOException {
+                                     String adresse, String niveauId, String parcoursId, MultipartFile photo, String responsableId, String niveauClasse) throws IOException {
         Optional<Etudiant> optionalEtudiant = etudiantRepository.findById(id);
         if (optionalEtudiant.isPresent()) {
             Etudiant etudiant = optionalEtudiant.get();
@@ -94,6 +111,11 @@ public class EtudiantService {
                 etudiantRepository.findByMatricule(matricule).isPresent()) {
                 throw new IllegalArgumentException("Matricule déjà utilisé.");
             }
+            Niveau niveau = niveauId != null ? niveauRepository.findById(niveauId)
+                    .orElseThrow(() -> new IllegalArgumentException("Niveau non trouvé.")) : null;
+            Parcours parcours = parcoursId != null ? parcoursRepository.findById(parcoursId)
+                    .orElseThrow(() -> new IllegalArgumentException("Parcours non trouvé.")) : null;
+
             String oldPhoto = etudiant.getPhoto();
             etudiant.setMatricule(matricule);
             etudiant.setPrenom(prenom);
@@ -101,9 +123,10 @@ public class EtudiantService {
             etudiant.setEmail(email);
             etudiant.setAdresse(adresse);
             etudiant.setNiveauClasse(niveauClasse);
+            etudiant.setNiveau(niveau);
+            etudiant.setParcours(parcours);
             if (photo != null && !photo.isEmpty()) {
                 etudiant.setPhoto(fileStorageUtil.storeFile(photo));
-                // Delete old photo if it exists
                 if (oldPhoto != null) {
                     fileStorageUtil.deleteFile(oldPhoto);
                 }
@@ -113,14 +136,19 @@ public class EtudiantService {
         throw new IllegalArgumentException("Étudiant non trouvé.");
     }
 
-    public EtudiantDTO updateNiveauClasse(String id, String niveauClasse, String responsableId) {
+    public EtudiantDTO updateNiveauAndParcours(String id, String niveauId, String parcoursId, String responsableId) {
         Optional<Etudiant> optionalEtudiant = etudiantRepository.findById(id);
         if (optionalEtudiant.isPresent()) {
             Etudiant etudiant = optionalEtudiant.get();
             if (!etudiant.getResponsable().getId().equals(responsableId)) {
                 throw new IllegalArgumentException("Non autorisé à modifier cet étudiant.");
             }
-            etudiant.setNiveauClasse(niveauClasse);
+            Niveau niveau = niveauId != null ? niveauRepository.findById(niveauId)
+                    .orElseThrow(() -> new IllegalArgumentException("Niveau non trouvé.")) : null;
+            Parcours parcours = parcoursId != null ? parcoursRepository.findById(parcoursId)
+                    .orElseThrow(() -> new IllegalArgumentException("Parcours non trouvé.")) : null;
+            etudiant.setNiveau(niveau);
+            etudiant.setParcours(parcours);
             return mapToDTO(etudiantRepository.save(etudiant));
         }
         throw new IllegalArgumentException("Étudiant non trouvé.");
@@ -136,7 +164,6 @@ public class EtudiantService {
             String oldPhoto = etudiant.getPhoto();
             if (photo != null && !photo.isEmpty()) {
                 etudiant.setPhoto(fileStorageUtil.storeFile(photo));
-                // Delete old photo if it exists
                 if (oldPhoto != null) {
                     fileStorageUtil.deleteFile(oldPhoto);
                 }
@@ -166,7 +193,6 @@ public class EtudiantService {
             if (!etudiant.getResponsable().getId().equals(responsableId)) {
                 throw new IllegalArgumentException("Non autorisé à supprimer cet étudiant.");
             }
-            // Delete the photo file if it exists
             if (etudiant.getPhoto() != null) {
                 try {
                     fileStorageUtil.deleteFile(etudiant.getPhoto());

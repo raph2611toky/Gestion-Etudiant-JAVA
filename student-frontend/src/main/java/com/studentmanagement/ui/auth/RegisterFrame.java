@@ -3,10 +3,7 @@ package com.studentmanagement.ui.auth;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
+import java.awt.event.*;
 import com.studentmanagement.ui.common.MainWindow;
 import com.studentmanagement.model.ResponsableResponse;
 import org.springframework.web.client.HttpClientErrorException;
@@ -20,6 +17,7 @@ public class RegisterFrame extends JPanel {
     private Color primaryColor = new Color(41, 128, 185);
     private Color secondaryColor = new Color(52, 152, 219);
     private Color backgroundColor = new Color(236, 240, 241);
+    private static final String REGISTER_API = "http://localhost:8080/api/responsables/register";
     private RestTemplate restTemplate = new RestTemplate();
 
     public RegisterFrame(MainWindow mainWindow) {
@@ -33,7 +31,6 @@ public class RegisterFrame extends JPanel {
         mainPanel.setBackground(backgroundColor);
 
         JPanel formPanel = createFormPanel();
-
         mainPanel.add(Box.createVerticalGlue());
         mainPanel.add(formPanel);
         mainPanel.add(Box.createVerticalGlue());
@@ -54,21 +51,16 @@ public class RegisterFrame extends JPanel {
         titleLabel.setForeground(primaryColor);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(titleLabel);
-
         panel.add(Box.createRigidArea(new Dimension(0, 25)));
 
         panel.add(createFieldPanel("Prénom", prenomField = new JTextField()));
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
-
         panel.add(createFieldPanel("Nom", nomField = new JTextField()));
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
-
         panel.add(createFieldPanel("Email", emailField = new JTextField()));
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
-
         panel.add(createFieldPanel("Mot de passe", passwordField = new JPasswordField()));
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
-
         panel.add(createFieldPanel("Confirmer le mot de passe", confirmPasswordField = new JPasswordField()));
         panel.add(Box.createRigidArea(new Dimension(0, 30)));
 
@@ -81,54 +73,52 @@ public class RegisterFrame extends JPanel {
         JButton registerButton = createStyledButton("S'inscrire", primaryColor);
         JButton backButton = createStyledButton("Retour", new Color(52, 73, 94));
 
-        registerButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String prenom = prenomField.getText();
-                String nom = nomField.getText();
-                String email = emailField.getText();
-                String password = new String(passwordField.getPassword());
-                String confirmPassword = new String(confirmPasswordField.getPassword());
+        registerButton.addActionListener(_ -> {
+            String prenom = prenomField.getText().trim();
+            String nom = nomField.getText().trim();
+            String email = emailField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            String confirmPassword = new String(confirmPasswordField.getPassword());
 
-                if (prenom.isEmpty() || nom.isEmpty() || email.isEmpty() || password.isEmpty()) {
-                    JOptionPane.showMessageDialog(RegisterFrame.this, "Veuillez remplir tous les champs.", "Erreur",
+            if (prenom.isEmpty() || nom.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.", "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!email.matches("^[A-Za-z0-9+_.-]+@.+\\..+$")) {
+                JOptionPane.showMessageDialog(this, "Email invalide.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!password.equals(confirmPassword)) {
+                JOptionPane.showMessageDialog(this, "Les mots de passe ne correspondent pas.", "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (password.length() < 6) {
+                JOptionPane.showMessageDialog(this, "Le mot de passe doit contenir au moins 6 caractères.", "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            try {
+                ResponsableRequest request = new ResponsableRequest();
+                request.setPrenom(prenom);
+                request.setNom(nom);
+                request.setEmail(email);
+                request.setMotDePasse(password);
+                ResponsableResponse response = restTemplate.postForObject(REGISTER_API, request,
+                        ResponsableResponse.class);
+                if (response != null) {
+                    mainWindow.showPanel("Login");
+                    JOptionPane.showMessageDialog(this, "Inscription réussie ! Veuillez vous connecter.");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Erreur lors de l'inscription.", "Erreur",
                             JOptionPane.ERROR_MESSAGE);
-                    return;
                 }
-                if (!password.equals(confirmPassword)) {
-                    JOptionPane.showMessageDialog(RegisterFrame.this, "Les mots de passe ne correspondent pas.",
-                            "Erreur", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                try {
-                    String url = "http://localhost:8080/api/responsables/register";
-                    ResponsableRequest request = new ResponsableRequest();
-                    request.setPrenom(prenom);
-                    request.setNom(nom);
-                    request.setEmail(email);
-                    request.setMotDePasse(password);
-                    ResponsableResponse response = restTemplate.postForObject(url, request, ResponsableResponse.class);
-                    if (response != null) {
-                        mainWindow.showPanel("Login");
-                        JOptionPane.showMessageDialog(RegisterFrame.this,
-                                "Inscription réussie ! Veuillez vous connecter.");
-                    } else {
-                        System.out.println("Erreur lors de l'inscription.");
-                        // JOptionPane.showMessageDialog(RegisterFrame.this, "Erreur lors de
-                        // l'inscription.", "Erreur",
-                        // JOptionPane.ERROR_MESSAGE);
-                    }
-                } catch (HttpClientErrorException ex) {
-                    System.out.println("Cet email est déjà utilisé.");
-                    // JOptionPane.showMessageDialog(RegisterFrame.this, "Cet email est déjà
-                    // utilisé.", "Erreur",
-                    // JOptionPane.ERROR_MESSAGE);
-                } catch (Exception ex) {
-                    System.out.println("Erreur lors de l'inscription : " + ex.getMessage());
-                    // JOptionPane.showMessageDialog(RegisterFrame.this,
-                    // "Erreur lors de l'inscription : " + ex.getMessage(), "Erreur",
-                    // JOptionPane.ERROR_MESSAGE);
-                }
+            } catch (HttpClientErrorException ex) {
+                JOptionPane.showMessageDialog(this, "Cet email est déjà utilisé.", "Erreur", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Erreur lors de l'inscription : " + ex.getMessage(), "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -139,7 +129,6 @@ public class RegisterFrame extends JPanel {
         buttonPanel.add(backButton);
 
         panel.add(buttonPanel);
-
         return panel;
     }
 
@@ -180,7 +169,6 @@ public class RegisterFrame extends JPanel {
         fieldPanel.add(label);
         fieldPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         fieldPanel.add(field);
-
         return fieldPanel;
     }
 
@@ -196,7 +184,6 @@ public class RegisterFrame extends JPanel {
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setMaximumSize(new Dimension(150, 40));
         button.setPreferredSize(new Dimension(150, 40));
-
         return button;
     }
 

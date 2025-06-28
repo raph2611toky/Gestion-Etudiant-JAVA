@@ -3,17 +3,12 @@ package com.studentmanagement.dto;
 import lombok.Data;
 
 @Data
-public class EtudiantDTO {
-    private String id;
+public class EtudiantRequestDTO {
     private String matricule;
     private String prenom;
     private String nom;
     private String email;
     private String adresse;
-    private String niveauClasse;
-    private String photo;
-    private String photo_url;
-    private String responsableId;
     private String niveauId;
     private String parcoursId;
 }

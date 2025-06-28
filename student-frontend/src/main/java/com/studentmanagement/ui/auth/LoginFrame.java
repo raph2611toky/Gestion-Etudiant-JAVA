@@ -3,29 +3,45 @@ package com.studentmanagement.ui.auth;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
+import java.awt.event.*;
 import com.studentmanagement.ui.common.MainWindow;
 import com.studentmanagement.model.ResponsableResponse;
+import com.studentmanagement.service.StudentService;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+// import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 public class LoginFrame extends JPanel {
     private static final long serialVersionUID = 1L;
     private JTextField emailField;
     private JPasswordField passwordField;
     private MainWindow mainWindow;
+    private final StudentService studentService;
     private Color primaryColor = new Color(41, 128, 185);
     private Color secondaryColor = new Color(52, 152, 219);
     private Color backgroundColor = new Color(236, 240, 241);
-    private RestTemplate restTemplate = new RestTemplate();
+    private static final String LOGIN_API = "http://localhost:8080/api/responsables/login";
+    private static final String PROFILE_API = "http://localhost:8080/api/responsables/me";
+    private RestTemplate restTemplate;
 
     public LoginFrame(MainWindow mainWindow) {
         this.mainWindow = mainWindow;
+        this.studentService = new StudentService();
         setLayout(new BorderLayout());
         setBackground(backgroundColor);
+
+        // Configure RestTemplate with logging interceptor
+        restTemplate = new RestTemplate();
+        restTemplate.getInterceptors().add((request, body, execution) -> {
+            System.out.println("Request URL: " + request.getURI());
+            System.out.println("Request Method: " + request.getMethod());
+            System.out.println("Request Headers: " + request.getHeaders());
+            return execution.execute(request, body);
+        });
 
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
@@ -33,7 +49,6 @@ public class LoginFrame extends JPanel {
         mainPanel.setBackground(backgroundColor);
 
         JPanel formPanel = createFormPanel();
-
         mainPanel.add(Box.createVerticalGlue());
         mainPanel.add(formPanel);
         mainPanel.add(Box.createVerticalGlue());
@@ -54,89 +69,12 @@ public class LoginFrame extends JPanel {
         titleLabel.setForeground(primaryColor);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(titleLabel);
-
         panel.add(Box.createRigidArea(new Dimension(0, 25)));
 
-        JPanel emailPanel = new JPanel();
-        emailPanel.setLayout(new BoxLayout(emailPanel, BoxLayout.Y_AXIS));
-        emailPanel.setBackground(Color.WHITE);
-        emailPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        emailPanel.setMaximumSize(new Dimension(350, 70));
-
-        JLabel emailLabel = new JLabel("Email");
-        emailLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        emailLabel.setForeground(new Color(100, 100, 100));
-
-        emailField = new JTextField();
-        emailField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        emailField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-        emailField.setPreferredSize(new Dimension(300, 30));
-        emailField.setMaximumSize(new Dimension(350, 30));
-
-        emailField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                emailField.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 2, 0, secondaryColor),
-                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                emailField.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
-                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-            }
-        });
-
-        emailPanel.add(emailLabel);
-        emailPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        emailPanel.add(emailField);
-
-        panel.add(emailPanel);
+        panel.add(createFieldPanel("Email", emailField = new JTextField()));
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
 
-        JPanel passwordPanel = new JPanel();
-        passwordPanel.setLayout(new BoxLayout(passwordPanel, BoxLayout.Y_AXIS));
-        passwordPanel.setBackground(Color.WHITE);
-        passwordPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        passwordPanel.setMaximumSize(new Dimension(350, 70));
-
-        JLabel passwordLabel = new JLabel("Mot de passe");
-        passwordLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        passwordLabel.setForeground(new Color(100, 100, 100));
-
-        passwordField = new JPasswordField();
-        passwordField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        passwordField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-        passwordField.setPreferredSize(new Dimension(300, 30));
-        passwordField.setMaximumSize(new Dimension(350, 30));
-
-        passwordField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                passwordField.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 2, 0, secondaryColor),
-                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                passwordField.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
-                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-            }
-        });
-
-        passwordPanel.add(passwordLabel);
-        passwordPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        passwordPanel.add(passwordField);
-
-        panel.add(passwordPanel);
+        panel.add(createFieldPanel("Mot de passe", passwordField = new JPasswordField()));
         panel.add(Box.createRigidArea(new Dimension(0, 30)));
 
         JPanel buttonPanel = new JPanel();
@@ -148,41 +86,54 @@ public class LoginFrame extends JPanel {
         JButton loginButton = createStyledButton("Se connecter", primaryColor);
         JButton registerButton = createStyledButton("S'inscrire", new Color(52, 73, 94));
 
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String email = emailField.getText();
-                String password = new String(passwordField.getPassword());
-                if (email.isEmpty() || password.isEmpty()) {
-                    JOptionPane.showMessageDialog(LoginFrame.this, "Veuillez remplir tous les champs.", "Erreur",
-                            JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                try {
-                    String url = "http://localhost:8080/api/responsables/login";
-                    LoginRequest request = new LoginRequest();
-                    request.setEmail(email);
-                    request.setMotDePasse(password);
-                    ResponsableResponse response = restTemplate.postForObject(url, request, ResponsableResponse.class);
-                    if (response != null) {
-                        mainWindow.setCurrentResponsable(response);
+        loginButton.addActionListener(_ -> {
+            String email = emailField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            if (email.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!email.matches("^[A-Za-z0-9+_.-]+@.+\\..+$")) {
+                JOptionPane.showMessageDialog(this, "Email invalide.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            try {
+                // Prepare login request
+                LoginRequest request = new LoginRequest();
+                request.setEmail(email);
+                request.setMotDePasse(password);
+
+                // Set headers for login request
+                HttpHeaders loginHeaders = new HttpHeaders();
+                loginHeaders.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<LoginRequest> loginEntity = new HttpEntity<>(request, loginHeaders);
+
+                // Perform login request
+                LoginResponse loginResponse = restTemplate.postForObject(LOGIN_API, loginEntity, LoginResponse.class);
+                if (loginResponse != null && loginResponse.getToken() != null) {
+                    studentService.setJwtToken(loginResponse.getToken());
+
+                    // Prepare profile request with Authorization header
+                    HttpHeaders profileHeaders = new HttpHeaders();
+                    profileHeaders.set("Authorization", "Bearer " + loginResponse.getToken());
+                    HttpEntity<Void> profileEntity = new HttpEntity<>(profileHeaders);
+
+                    // Perform profile request
+                    ResponsableResponse profile = restTemplate.exchange(PROFILE_API, HttpMethod.GET, profileEntity, ResponsableResponse.class).getBody();
+                    if (profile != null) {
+                        profile.setToken(loginResponse.getToken());
+                        mainWindow.setCurrentResponsable(profile);
                         mainWindow.showPanel("Dashboard");
-                        // JOptionPane.showMessageDialog(LoginFrame.this, "Connexion réussie !");
                     } else {
-                        JOptionPane.showMessageDialog(LoginFrame.this, "Email ou mot de passe incorrect.", "Erreur",
-                                JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this, "Impossible de récupérer le profil.", "Erreur", JOptionPane.ERROR_MESSAGE);
                     }
-                } catch (HttpClientErrorException ex) {
-                    System.out.println("Email ou mot de passe incorrect.");
-                    // JOptionPane.showMessageDialog(LoginFrame.this, "Email ou mot de passe
-                    // incorrect.", "Erreur",
-                    // JOptionPane.ERROR_MESSAGE);
-                } catch (Exception ex) {
-                    System.out.println("Erreur lors de la connexion : " + ex.getMessage());
-                    // JOptionPane.showMessageDialog(LoginFrame.this, "Erreur lors de la connexion :
-                    // " + ex.getMessage(),
-                    // "Erreur", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Email ou mot de passe incorrect.", "Erreur", JOptionPane.ERROR_MESSAGE);
                 }
+            } catch (HttpClientErrorException ex) {
+                JOptionPane.showMessageDialog(this, "Email ou mot de passe incorrect: " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Erreur lors de la connexion : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -193,8 +144,47 @@ public class LoginFrame extends JPanel {
         buttonPanel.add(registerButton);
 
         panel.add(buttonPanel);
-
         return panel;
+    }
+
+    private JPanel createFieldPanel(String labelText, JTextField field) {
+        JPanel fieldPanel = new JPanel();
+        fieldPanel.setLayout(new BoxLayout(fieldPanel, BoxLayout.Y_AXIS));
+        fieldPanel.setBackground(Color.WHITE);
+        fieldPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        fieldPanel.setMaximumSize(new Dimension(350, 70));
+
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        label.setForeground(new Color(100, 100, 100));
+
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        field.setPreferredSize(new Dimension(300, 30));
+        field.setMaximumSize(new Dimension(350, 30));
+
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 2, 0, secondaryColor),
+                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
+                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+            }
+        });
+
+        fieldPanel.add(label);
+        fieldPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        fieldPanel.add(field);
+        return fieldPanel;
     }
 
     private JButton createStyledButton(String text, Color bgColor) {
@@ -209,28 +199,44 @@ public class LoginFrame extends JPanel {
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setMaximumSize(new Dimension(150, 40));
         button.setPreferredSize(new Dimension(150, 40));
-
         return button;
     }
 
-    class LoginRequest {
+    // Make LoginRequest a static inner class
+    static class LoginRequest {
         private String email;
         private String motDePasse;
 
-        public String getEmail() {
-            return email;
+        // No-args constructor for Jackson
+        public LoginRequest() {}
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getMotDePasse() { return motDePasse; }
+        public void setMotDePasse(String motDePasse) { this.motDePasse = motDePasse; }
+    }
+
+    // Make LoginResponse a static inner class
+    static class LoginResponse {
+        private String token;
+        private String tokenType;
+        private long expiresIn;
+
+        // No-args constructor for Jackson
+        public LoginResponse() {}
+
+        // Constructor for convenience
+        public LoginResponse(String token, String tokenType, long expiresIn) {
+            this.token = token;
+            this.tokenType = tokenType;
+            this.expiresIn = expiresIn;
         }
 
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getMotDePasse() {
-            return motDePasse;
-        }
-
-        public void setMotDePasse(String motDePasse) {
-            this.motDePasse = motDePasse;
-        }
+        public String getToken() { return token; }
+        public void setToken(String token) { this.token = token; }
+        public String getTokenType() { return tokenType; }
+        public void setTokenType(String tokenType) { this.tokenType = tokenType; }
+        public long getExpiresIn() { return expiresIn; }
+        public void setExpiresIn(long expiresIn) { this.expiresIn = expiresIn; }
     }
 }

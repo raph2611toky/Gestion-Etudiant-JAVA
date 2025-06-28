@@ -1,0 +1,3 @@
+Lancement:
+
+mvn exec:java -D"exec.mainClass"="com.studentmanagement.Main" 

@@ -19,17 +19,20 @@ public class EtudiantController {
     @Autowired
     private EtudiantService etudiantService;
 
-    @PostMapping(consumes = "multipart/form-data")
+    @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<EtudiantDTO> addEtudiant(
-            @RequestParam("matricule") String matricule,
-            @RequestParam("prenom") String prenom,
-            @RequestParam("nom") String nom,
-            @RequestParam("email") String email,
-            @RequestParam(value = "adresse", required = false) String adresse,
-            @RequestParam(value = "niveauClasse", required = false) String niveauClasse,
-            @RequestParam(value = "photo", required = false) MultipartFile photo) throws IOException {
+            @RequestPart("matricule") String matricule,
+            @RequestPart("prenom") String prenom,
+            @RequestPart("nom") String nom,
+            @RequestPart("email") String email,
+            @RequestPart(value = "adresse", required = false) String adresse,
+            @RequestPart("niveauId") String niveauId,
+            @RequestPart(value = "parcoursId", required = false) String parcoursId,
+            @RequestPart(value = "niveauClasse", required = false) String niveauClasse,
+            @RequestPart(value = "photo", required = false) MultipartFile photo) throws IOException {
         String responsableId = SecurityContextHolder.getContext().getAuthentication().getName();
-        EtudiantDTO newEtudiant = etudiantService.addEtudiant(matricule, prenom, nom, email, adresse, niveauClasse, photo, responsableId);
+        EtudiantDTO newEtudiant = etudiantService.addEtudiant(
+                matricule, prenom, nom, email, adresse, niveauId, parcoursId, photo, responsableId, niveauClasse);
         return ResponseEntity.ok(newEtudiant);
     }
 
@@ -53,37 +56,46 @@ public class EtudiantController {
         return ResponseEntity.notFound().build();
     }
 
-    @PutMapping(path = "/{id}", consumes = "multipart/form-data")
+    @PutMapping(path = "/{id}", consumes = {"multipart/form-data"})
     public ResponseEntity<EtudiantDTO> updateEtudiant(
             @PathVariable String id,
-            @RequestParam("matricule") String matricule,
-            @RequestParam("prenom") String prenom,
-            @RequestParam("nom") String nom,
-            @RequestParam("email") String email,
-            @RequestParam(value = "adresse", required = false) String adresse,
-            @RequestParam(value = "niveauClasse", required = false) String niveauClasse,
-            @RequestParam(value = "photo", required = false) MultipartFile photo) throws IOException {
+            @RequestPart("matricule") String matricule,
+            @RequestPart("prenom") String prenom,
+            @RequestPart("nom") String nom,
+            @RequestPart("email") String email,
+            @RequestPart(value = "adresse", required = false) String adresse,
+            @RequestPart("niveauId") String niveauId,
+            @RequestPart(value = "parcoursId", required = false) String parcoursId,
+            @RequestPart(value = "niveauClasse", required = false) String niveauClasse,
+            @RequestPart(value = "photo", required = false) MultipartFile photo) throws IOException {
         String responsableId = SecurityContextHolder.getContext().getAuthentication().getName();
-        EtudiantDTO updatedEtudiant = etudiantService.updateEtudiant(id, matricule, prenom, nom, email, adresse, niveauClasse, photo, responsableId);
+        EtudiantDTO updatedEtudiant = etudiantService.updateEtudiant(
+                id, matricule, prenom, nom, email, adresse, niveauId, parcoursId, photo, responsableId, niveauClasse);
         return ResponseEntity.ok(updatedEtudiant);
     }
 
-    @PutMapping("/{id}/niveau")
-    public ResponseEntity<EtudiantDTO> updateNiveauClasse(@PathVariable String id, @RequestBody String niveauClasse) {
+    @PutMapping("/{id}/niveau-parcours")
+    public ResponseEntity<EtudiantDTO> updateNiveauAndParcours(
+            @PathVariable String id,
+            @RequestBody UpdateNiveauParcoursRequest request) {
         String responsableId = SecurityContextHolder.getContext().getAuthentication().getName();
-        EtudiantDTO updatedEtudiant = etudiantService.updateNiveauClasse(id, niveauClasse, responsableId);
+        EtudiantDTO updatedEtudiant = etudiantService.updateNiveauAndParcours(id, request.getNiveauId(), request.getParcoursId(), responsableId);
         return ResponseEntity.ok(updatedEtudiant);
     }
 
-    @PutMapping(path = "/{id}/photo", consumes = "multipart/form-data")
-    public ResponseEntity<EtudiantDTO> updatePhoto(@PathVariable String id, @RequestParam("photo") MultipartFile photo) throws IOException {
+    @PutMapping(path = "/{id}/photo", consumes = {"multipart/form-data"})
+    public ResponseEntity<EtudiantDTO> updatePhoto(
+            @PathVariable String id,
+            @RequestPart("photo") MultipartFile photo) throws IOException {
         String responsableId = SecurityContextHolder.getContext().getAuthentication().getName();
         EtudiantDTO updatedEtudiant = etudiantService.updatePhoto(id, photo, responsableId);
         return ResponseEntity.ok(updatedEtudiant);
     }
 
     @PutMapping("/{id}/adresse")
-    public ResponseEntity<EtudiantDTO> updateAdresse(@PathVariable String id, @RequestBody String adresse) {
+    public ResponseEntity<EtudiantDTO> updateAdresse(
+            @PathVariable String id,
+            @RequestBody String adresse) {
         String responsableId = SecurityContextHolder.getContext().getAuthentication().getName();
         EtudiantDTO updatedEtudiant = etudiantService.updateAdresse(id, adresse, responsableId);
         return ResponseEntity.ok(updatedEtudiant);
@@ -94,5 +106,26 @@ public class EtudiantController {
         String responsableId = SecurityContextHolder.getContext().getAuthentication().getName();
         etudiantService.deleteEtudiant(id, responsableId);
         return ResponseEntity.noContent().build();
+    }
+
+    private static class UpdateNiveauParcoursRequest {
+        private String niveauId;
+        private String parcoursId;
+
+        public String getNiveauId() {
+            return niveauId;
+        }
+
+        public void setNiveauId(String niveauId) {
+            this.niveauId = niveauId;
+        }
+
+        public String getParcoursId() {
+            return parcoursId;
+        }
+
+        public void setParcoursId(String parcoursId) {
+            this.parcoursId = parcoursId;
+        }
     }
 }

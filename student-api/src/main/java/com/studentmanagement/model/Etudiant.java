@@ -10,6 +10,7 @@ public class Etudiant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "VARCHAR(36)")
     private String id;
 
     @Column(unique = true, nullable = false)
@@ -25,4 +26,12 @@ public class Etudiant {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "responsable_id")
     private Responsable responsable;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "niveau_id")
+    private Niveau niveau;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parcours_id")
+    private Parcours parcours;
 }

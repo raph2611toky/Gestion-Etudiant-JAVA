@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface EtudiantRepository extends JpaRepository<Etudiant, String> {
     Optional<Etudiant> findByMatricule(String matricule);
     List<Etudiant> findByResponsableId(String responsableId);
+    List<Etudiant> findByNiveauId(String niveauId);
 }

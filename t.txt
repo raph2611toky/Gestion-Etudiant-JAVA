@@ -1,0 +1,4215 @@
+D:\...\student-frontend> ls
+
+
+    Répertoire : D:\TOKY\PROJET\JAVA\gestion des etudiants\student-frontend
+
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----         6/12/2025   9:34 AM                .mvn
+d-----         6/12/2025   9:44 AM                .vscode
+d-----         6/12/2025   9:34 AM                src
+d-----         6/12/2025  10:15 AM                target
+-a----         6/12/2025   9:34 AM             38 .gitattributes
+-a----         6/12/2025   9:34 AM            394 .gitignore
+-a----         6/12/2025   9:34 AM           1858 HELP.md
+-a----         6/16/2025  12:14 AM             76 info.txt
+-a----         6/12/2025   9:34 AM          10665 mvnw
+-a----         6/12/2025   9:34 AM           6912 mvnw.cmd
+-a----         6/12/2025  10:15 AM           2703 pom.xml
+
+
+D:\...\student-frontend> tree .\src\ /F
+Structure du dossier pour le volume Stockage
+Le numéro de série du volume est 0616-3CC8
+D:\TOKY\PROJET\JAVA\GESTION DES ETUDIANTS\STUDENT-FRONTEND\SRC
+├───main
+│   ├───java
+│   │   └───com
+│   │       └───studentmanagement
+│   │           │   Main.java
+│   │           │
+│   │           ├───model
+│   │           │       ClassStatisticsDTO.java
+│   │           │       Etudiant.java
+│   │           │       Matiere.java
+│   │           │       Mention.java
+│   │           │       Niveau.java
+│   │           │       Note.java
+│   │           │       NoteDTO.java
+│   │           │       Parcours.java
+│   │           │       ResponsableResponse.java
+│   │           │       StudentAverageDTO.java
+│   │           │
+│   │           ├───service
+│   │           │       ApiException.java
+│   │           │       ParameterService.java
+│   │           │       StudentService.java
+│   │           │
+│   │           └───ui
+│   │               ├───auth
+│   │               │       LoginFrame.java
+│   │               │       RegisterFrame.java
+│   │               │
+│   │               ├───common
+│   │               │       MainWindow.java
+│   │               │       ModernComponents.java
+│   │               │       ProfilePanel.java
+│   │               │       SidebarUtil.java
+│   │               │
+│   │               ├───dashboard
+│   │               │       DashboardFrame.java
+│   │               │
+│   │               ├───etudiant
+│   │               │       StudentManagementFrame.java
+│   │               │
+│   │               ├───grades
+│   │               │       GradesManagementFrame.java
+│   │               │
+│   │               └───parameters
+│   │                       ParametersFrame.java
+│   │
+│   └───resources
+│       └───images
+│               default.png
+│
+└───test
+    └───java
+        └───com
+            └───studentmanagement
+                └───student_frontend
+D:\...\student-frontend> 
+
+package com.studentmanagement.service;
+
+import com.studentmanagement.model.*;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+
+import java.io.File;
+import java.util.*;
+
+public class StudentService {
+    private final RestTemplate restTemplate;
+    private static final String BASE_API_URL = "http://localhost:8080/api";
+    private static final String ETUDIANTS_API = BASE_API_URL + "/etudiants";
+    private static final String NIVEAUX_API = BASE_API_URL + "/niveaux";
+    private static final String PARCOURS_API = BASE_API_URL + "/parcours";
+    private static final String MENTIONS_API = BASE_API_URL + "/mentions";
+    private static final String MATIERES_API = BASE_API_URL + "/matieres";
+    private static final String NOTES_API = BASE_API_URL + "/notes";
+    private String jwtToken;
+
+    public StudentService() {
+        this.restTemplate = new RestTemplate();
+    }
+
+    public void setJwtToken(String token) {
+        this.jwtToken = token;
+    }
+
+    private HttpHeaders createHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        if (jwtToken != null) {
+            headers.set("Authorization", "Bearer " + jwtToken);
+        }
+        return headers;
+    }
+
+    public List<Etudiant> getAllEtudiants(String responsableId) {
+        try {
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<Etudiant[]> response = restTemplate.exchange(
+                ETUDIANTS_API,
+                HttpMethod.GET,
+                request,
+                Etudiant[].class
+            );
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new Etudiant[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ApiException("Aucun étudiant trouvé pour ce responsable.");
+            } else if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            } else {
+                throw new ApiException("Erreur lors du chargement des étudiants.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public List<Niveau> getAllNiveaux() {
+        try {
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<Niveau[]> response = restTemplate.exchange(
+                NIVEAUX_API,
+                HttpMethod.GET,
+                request,
+                Niveau[].class
+            );
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new Niveau[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            }
+            throw new ApiException("Erreur lors du chargement des niveaux.", ex);
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public List<Parcours> getAllParcours() {
+        try {
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<Parcours[]> response = restTemplate.exchange(
+                PARCOURS_API,
+                HttpMethod.GET,
+                request,
+                Parcours[].class
+            );
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new Parcours[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            }
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return new ArrayList<>();
+            }
+            throw new ApiException("Erreur lors du chargement des parcours.", ex);
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public List<Mention> getAllMentions() {
+        try {
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<Mention[]> response = restTemplate.exchange(
+                MENTIONS_API,
+                HttpMethod.GET,
+                request,
+                Mention[].class
+            );
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new Mention[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            }
+            throw new ApiException("Erreur lors du chargement des mentions.", ex);
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public List<Matiere> getAllMatieres() {
+        try {
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<Matiere[]> response = restTemplate.exchange(
+                MATIERES_API,
+                HttpMethod.GET,
+                request,
+                Matiere[].class
+            );
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new Matiere[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            }
+            throw new ApiException("Erreur lors du chargement des matières.", ex);
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public void addEtudiant(Etudiant etudiant, String responsableId, File photo) {
+        try {
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("matricule", etudiant.getMatricule());
+            body.add("prenom", etudiant.getPrenom());
+            body.add("nom", etudiant.getNom());
+            body.add("email", etudiant.getEmail());
+            body.add("adresse", etudiant.getAdresse());
+            body.add("niveauId", etudiant.getNiveauId());
+            body.add("parcoursId", etudiant.getParcoursId());
+            body.add("niveauClasse", etudiant.getNiveauClasse());
+            if (photo != null) {
+                body.add("photo", new FileSystemResource(photo));
+            }
+
+            HttpHeaders headers = createHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+
+            restTemplate.postForObject(ETUDIANTS_API, request, Etudiant.class);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                throw new ApiException("Les données de l'étudiant sont invalides.");
+            } else if (ex.getStatusCode() == HttpStatus.CONFLICT) {
+                throw new ApiException("Un étudiant avec ce matricule ou email existe déjà.");
+            } else {
+                throw new ApiException("Erreur lors de l'ajout de l'étudiant.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public void updateEtudiant(String id, Etudiant etudiant, File photo) {
+        try {
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("matricule", etudiant.getMatricule());
+            body.add("prenom", etudiant.getPrenom());
+            body.add("nom", etudiant.getNom());
+            body.add("email", etudiant.getEmail());
+            body.add("adresse", etudiant.getAdresse());
+            body.add("niveauId", etudiant.getNiveauId());
+            body.add("parcoursId", etudiant.getParcoursId());
+            body.add("niveauClasse", etudiant.getNiveauClasse());
+            if (photo != null) {
+                body.add("photo", new FileSystemResource(photo));
+            }
+
+            HttpHeaders headers = createHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+
+            restTemplate.put(ETUDIANTS_API + "/" + id, request);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ApiException("L'étudiant avec l'ID spécifié n'existe pas.");
+            } else if (ex.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                throw new ApiException("Les données de mise à jour sont invalides.");
+            } else {
+                throw new ApiException("Erreur lors de la mise à jour de l'étudiant.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public void updateNiveauParcours(String id, String niveauId, String parcoursId) {
+        try {
+            HttpHeaders headers = createHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            String body = "{\"niveauId\":\"" + niveauId + "\",\"parcoursId\":\"" + parcoursId + "\"}";
+            HttpEntity<String> request = new HttpEntity<>(body, headers);
+
+            restTemplate.put(ETUDIANTS_API + "/" + id + "/niveau-parcours", request);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ApiException("L'étudiant ou les ressources spécifiées n'existent pas.");
+            } else if (ex.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                throw new ApiException("Les données de mise à jour sont invalides.");
+            } else {
+                throw new ApiException("Erreur lors de la mise à jour du niveau et parcours.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public void updatePhoto(String id, File photo) {
+        try {
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("photo", new FileSystemResource(photo));
+
+            HttpHeaders headers = createHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+
+            restTemplate.put(ETUDIANTS_API + "/" + id + "/photo", request);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ApiException("L'étudiant avec l'ID spécifié n'existe pas.");
+            } else {
+                throw new ApiException("Erreur lors de la mise à jour de la photo.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public void deleteEtudiant(String id) {
+        try {
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            restTemplate.exchange(ETUDIANTS_API + "/" + id, HttpMethod.DELETE, request, Void.class);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ApiException("L'étudiant avec l'ID spécifié n'existe pas.");
+            } else {
+                throw new ApiException("Erreur lors de la suppression de l'étudiant.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public List<Note> getAllNotes(String semestre, String annee) {
+        try {
+            StringBuilder url = new StringBuilder(NOTES_API);
+            if (semestre != null || annee != null) {
+                url.append("?");
+                if (semestre != null) {
+                    url.append("semestre=").append(semestre);
+                    if (annee != null) {
+                        url.append("&");
+                    }
+                }
+                if (annee != null) {
+                    url.append("annee=").append(annee);
+                }
+            }
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<Note[]> response = restTemplate.exchange(
+                url.toString(),
+                HttpMethod.GET,
+                request,
+                Note[].class
+            );
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new Note[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return new ArrayList<>();
+            } else if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            } else {
+                throw new ApiException("Erreur lors du chargement des notes.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public List<Note> getNotesByEtudiant(String etudiantId) {
+        try {
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<Note[]> response = restTemplate.exchange(
+                NOTES_API + "/etudiant/" + etudiantId,
+                HttpMethod.GET,
+                request,
+                Note[].class
+            );
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new Note[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return new ArrayList<>();
+            } else if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            } else {
+                throw new ApiException("Erreur lors du chargement des notes.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public void addNote(Note note) {
+        try {
+            NoteDTO dto = new NoteDTO();
+            dto.setEtudiantId(note.getEtudiantId());
+            dto.setMatiereId(note.getMatiereId());
+            dto.setValeur(note.getValeur());
+            dto.setSemestre(note.getSemestre());
+            dto.setAnnee(note.getAnnee());
+            HttpEntity<NoteDTO> request = new HttpEntity<>(dto, createHeaders());
+            restTemplate.postForObject(NOTES_API, request, NoteDTO.class);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                throw new ApiException("Les données de la note sont invalides.");
+            } else if (ex.getStatusCode() == HttpStatus.CONFLICT) {
+                throw new ApiException("Une note pour cet étudiant et cette matière existe déjà.");
+            }
+            throw new ApiException("Erreur lors de l'ajout de la note.", ex);
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public void updateNote(String id, Note note) {
+        try {
+            NoteDTO dto = new NoteDTO();
+            dto.setEtudiantId(note.getEtudiantId());
+            dto.setMatiereId(note.getMatiereId());
+            dto.setValeur(note.getValeur());
+            dto.setSemestre(note.getSemestre());
+            dto.setAnnee(note.getAnnee());
+            HttpEntity<NoteDTO> request = new HttpEntity<>(dto, createHeaders());
+            restTemplate.put(NOTES_API + "/" + id, request);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ApiException("La note avec l'ID spécifié n'existe pas.");
+            } else if (ex.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                throw new ApiException("Les données de mise à jour sont invalides.");
+            }
+            throw new ApiException("Erreur lors de la mise à jour de la note.", ex);
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public void deleteNote(String id) {
+        try {
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            restTemplate.exchange(NOTES_API + "/" + id, HttpMethod.DELETE, request, Void.class);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ApiException("La note avec l'ID spécifié n'existe pas.");
+            }
+            throw new ApiException("Erreur lors de la suppression de la note.", ex);
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public List<StudentAverageDTO> getStudentAverages(String semestre, String annee) {
+        try {
+            StringBuilder url = new StringBuilder(NOTES_API + "/averages");
+            if (semestre != null || annee != null) {
+                url.append("?");
+                if (semestre != null) {
+                    url.append("semestre=").append(semestre);
+                    if (annee != null) {
+                        url.append("&");
+                    }
+                }
+                if (annee != null) {
+                    url.append("annee=").append(annee);
+                }
+            }
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<StudentAverageDTO[]> response = restTemplate.exchange(
+                url.toString(),
+                HttpMethod.GET,
+                request,
+                StudentAverageDTO[].class
+            );
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new StudentAverageDTO[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return new ArrayList<>();
+            } else if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            } else {
+                throw new ApiException("Erreur lors du chargement des moyennes.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public ClassStatisticsDTO getClassStatistics(String niveauId, String semestre, String annee, int topN) {
+        try {
+            StringBuilder url = new StringBuilder(NOTES_API + "/statistics/niveau/" + niveauId);
+            url.append("?topN=").append(topN);
+            if (semestre != null) {
+                url.append("&semestre=").append(semestre);
+            }
+            if (annee != null) {
+                url.append("&annee=").append(annee);
+            }
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<ClassStatisticsDTO> response = restTemplate.exchange(
+                url.toString(),
+                HttpMethod.GET,
+                request,
+                ClassStatisticsDTO.class
+            );
+            return response.getBody();
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ApiException("Aucune statistique trouvée pour ce niveau.");
+            } else if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            } else {
+                throw new ApiException("Erreur lors du chargement des statistiques.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public List<ClassStatisticsDTO> getAllClassStatistics(String semestre, String annee) {
+        try {
+            List<Niveau> niveaux = getAllNiveaux();
+            List<ClassStatisticsDTO> allStats = new ArrayList<>();
+            for (Niveau niveau : niveaux) {
+                try {
+                    ClassStatisticsDTO stats = getClassStatistics(niveau.getId(), semestre, annee, 5);
+                    if (stats != null) {
+                        allStats.add(stats);
+                    }
+                } catch (ApiException ex) {
+                    // Skip levels with no statistics
+                    continue;
+                }
+            }
+            return allStats;
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            }
+            throw new ApiException("Erreur lors du chargement des statistiques.", ex);
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+}
+
+package com.studentmanagement.ui.etudiant;
+
+import javax.swing.*;
+import javax.swing.table.*;
+import javax.swing.border.AbstractBorder;
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.geom.*;
+import java.io.File;
+import java.net.URL;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.regex.Pattern;
+import com.studentmanagement.model.Etudiant;
+import com.studentmanagement.model.Niveau;
+import com.studentmanagement.model.Parcours;
+import com.studentmanagement.service.ApiException;
+import com.studentmanagement.service.StudentService;
+import com.studentmanagement.ui.common.MainWindow;
+import com.studentmanagement.ui.common.SidebarUtil;
+import com.studentmanagement.ui.common.ModernComponents;
+
+public class StudentManagementFrame extends JPanel {
+    private static final long serialVersionUID = 1L;
+    private JTextField matriculeField, firstNameField, lastNameField, emailField, adresseField;
+    private JComboBox<Niveau> niveauComboBox;
+    private JComboBox<Parcours> parcoursComboBox;
+    private JComboBox<String> niveauFilterComboBox;
+    private JComboBox<String> parcoursFilterComboBox;
+    private DefaultTableModel tableModel;
+    private JTable studentTable;
+    private JPanel cardsPanel;
+    private MainWindow mainWindow;
+    private StudentService studentService;
+    private boolean isTableView = true;
+    private JDialog studentDialog;
+    private String responsableId;
+    private File selectedPhoto;
+    private JLabel photoPreviewLabel;
+    private JTextField searchField;
+    private List<Etudiant> allStudents = new ArrayList<>();
+    private List<Niveau> allNiveaux = new ArrayList<>();
+    private List<Parcours> allParcours = new ArrayList<>();
+
+    // Modern Color Palette - Enhanced
+    private static final Color PRIMARY_COLOR = new Color(99, 102, 241);
+    private static final Color SECONDARY_COLOR = new Color(139, 92, 246);
+    private static final Color SUCCESS_COLOR = new Color(34, 197, 94);
+    private static final Color WARNING_COLOR = new Color(251, 146, 60);
+    private static final Color ERROR_COLOR = new Color(239, 68, 68);
+    private static final Color BACKGROUND_COLOR = new Color(248, 250, 252);
+    private static final Color CARD_COLOR = Color.WHITE;
+    private static final Color TEXT_PRIMARY = new Color(15, 23, 42);
+    private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
+    private static final Color BORDER_COLOR = new Color(226, 232, 240);
+    private static final Color HOVER_COLOR = new Color(241, 245, 249);
+
+    public StudentManagementFrame(MainWindow mainWindow) {
+        this.mainWindow = mainWindow;
+        this.studentService = new StudentService();
+        this.responsableId = mainWindow.getCurrentResponsable() != null ? mainWindow.getCurrentResponsable().getId()
+                : null;
+        if (this.responsableId != null) {
+            this.studentService.setJwtToken(mainWindow.getCurrentResponsable().getToken());
+        } else {
+            showErrorNotification("Erreur: Responsable non identifié.");
+        }
+
+        initializeUI();
+        loadNiveauxAndParcours();
+        loadStudents();
+    }
+
+    private void initializeUI() {
+        setLayout(new BorderLayout());
+        setBackground(BACKGROUND_COLOR);
+
+        JPanel sidebar = SidebarUtil.createSidebar(mainWindow, "Students");
+        add(sidebar, BorderLayout.WEST);
+
+        JPanel mainContent = createMainContent();
+        add(mainContent, BorderLayout.CENTER);
+
+        loadNiveauxAndParcours();
+    }
+
+    private void loadNiveauxAndParcours() {
+        try {
+            List<Niveau> niveaux = studentService.getAllNiveaux();
+            allNiveaux = niveaux != null ? new ArrayList<>(niveaux) : new ArrayList<>();
+            if (allNiveaux.isEmpty()) {
+                showWarningNotification("Aucun niveau trouvé. Veuillez ajouter des niveaux dans Paramètres.");
+            }
+        } catch (ApiException ex) {
+            showErrorNotification("Erreur lors du chargement des niveaux: " + ex.getMessage());
+            allNiveaux = new ArrayList<>();
+        }
+
+        try {
+            List<Parcours> parcours = studentService.getAllParcours();
+            allParcours = parcours != null ? new ArrayList<>(parcours) : new ArrayList<>();
+            if (allParcours.isEmpty()) {
+                showWarningNotification("Aucun parcours trouvé. Veuillez ajouter des parcours dans Paramètres.");
+            }
+        } catch (ApiException ex) {
+            showErrorNotification("Erreur lors du chargement des parcours: " + ex.getMessage());
+            allParcours = new ArrayList<>();
+        }
+    }
+
+    private JPanel createMainContent() {
+        JPanel mainContent = new JPanel(new BorderLayout());
+        mainContent.setBackground(BACKGROUND_COLOR);
+        mainContent.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+
+        JPanel headerSection = createEnhancedHeader();
+        mainContent.add(headerSection, BorderLayout.NORTH);
+
+        JPanel contentPanel = createContentPanel();
+        mainContent.add(contentPanel, BorderLayout.CENTER);
+        loadNiveauxAndParcours();
+
+        return mainContent;
+    }
+
+    private JPanel createEnhancedHeader() {
+        JPanel headerSection = new JPanel(new BorderLayout());
+        headerSection.setBackground(BACKGROUND_COLOR);
+        headerSection.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+
+        JPanel titleSection = new JPanel();
+        titleSection.setLayout(new BoxLayout(titleSection, BoxLayout.Y_AXIS));
+        titleSection.setBackground(BACKGROUND_COLOR);
+
+        JLabel titleLabel = new JLabel("🎓 Gestion des Étudiants");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        titleLabel.setForeground(TEXT_PRIMARY);
+
+        JLabel breadcrumbLabel = new JLabel("Dashboard > Gestion des Étudiants");
+        breadcrumbLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        breadcrumbLabel.setForeground(TEXT_SECONDARY);
+
+        titleSection.add(titleLabel);
+        titleSection.add(Box.createVerticalStrut(5));
+        titleSection.add(breadcrumbLabel);
+
+        JPanel controlsSection = createControlsSection();
+        headerSection.add(titleSection, BorderLayout.WEST);
+        headerSection.add(controlsSection, BorderLayout.EAST);
+
+        return headerSection;
+    }
+
+    private JPanel createControlsSection() {
+        JPanel controlsSection = new JPanel();
+        controlsSection.setLayout(new BoxLayout(controlsSection, BoxLayout.Y_AXIS));
+        controlsSection.setBackground(BACKGROUND_COLOR);
+
+        JPanel filtersPanel = createFiltersPanel();
+        controlsSection.add(filtersPanel);
+        controlsSection.add(Box.createVerticalStrut(15));
+
+        JPanel buttonsPanel = createActionButtonsPanel();
+        controlsSection.add(buttonsPanel);
+
+        return controlsSection;
+    }
+
+    private JPanel createFiltersPanel() {
+        JPanel filtersPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        filtersPanel.setBackground(BACKGROUND_COLOR);
+
+        searchField = createEnhancedSearchField();
+        filtersPanel.add(searchField);
+
+        niveauFilterComboBox = createEnhancedComboBox("TOUS LES NIVEAUX");
+        if (allNiveaux != null) {
+            for (Niveau niveau : new ArrayList<>(allNiveaux)) {
+                if (niveau != null && niveau.getNom() != null) {
+                    niveauFilterComboBox.addItem(niveau.getNom());
+                }
+            }
+        }
+        niveauFilterComboBox.addActionListener(e -> filterStudents());
+        filtersPanel.add(niveauFilterComboBox);
+
+        parcoursFilterComboBox = createEnhancedComboBox("TOUS LES PARCOURS");
+        if (allParcours != null) {
+            for (Parcours parcours : new ArrayList<>(allParcours)) {
+                if (parcours != null && parcours.getNom() != null) {
+                    parcoursFilterComboBox.addItem(parcours.getNom());
+                }
+            }
+        }
+        parcoursFilterComboBox.addActionListener(e -> filterStudents());
+        filtersPanel.add(parcoursFilterComboBox);
+
+        return filtersPanel;
+    }
+
+    private JTextField createEnhancedSearchField() {
+        JTextField searchField = new JTextField("🔍 Rechercher des étudiants...") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(getBackground());
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        searchField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        searchField.setPreferredSize(new Dimension(280, 42));
+        searchField.setBackground(CARD_COLOR);
+        searchField.setForeground(TEXT_SECONDARY);
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+
+        searchField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (searchField.getText().equals("🔍 Rechercher des étudiants...")) {
+                    searchField.setText("");
+                    searchField.setForeground(TEXT_PRIMARY);
+                }
+                searchField.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(PRIMARY_COLOR),
+                        BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (searchField.getText().isEmpty()) {
+                    searchField.setText("🔍 Rechercher des étudiants...");
+                    searchField.setForeground(TEXT_SECONDARY);
+                }
+                searchField.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(BORDER_COLOR),
+                        BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+            }
+        });
+
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                filterStudents();
+            }
+
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                filterStudents();
+            }
+
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                filterStudents();
+            }
+        });
+
+        return searchField;
+    }
+
+    private JComboBox<String> createEnhancedComboBox(String defaultItem) {
+        JComboBox<String> comboBox = new JComboBox<String>() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(getBackground());
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        comboBox.addItem(defaultItem);
+        comboBox.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        comboBox.setPreferredSize(new Dimension(180, 42));
+        comboBox.setBackground(CARD_COLOR);
+        comboBox.setForeground(TEXT_PRIMARY);
+        comboBox.setBorder(BorderFactory.createCompoundBorder(
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+
+        return comboBox;
+    }
+
+    private JPanel createActionButtonsPanel() {
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        buttonsPanel.setBackground(BACKGROUND_COLOR);
+
+        JButton viewToggleButton = createEnhancedButton(
+                isTableView ? "📋 Vue Cartes" : "📊 Vue Tableau",
+                SECONDARY_COLOR,
+                false);
+        viewToggleButton.addActionListener(e -> toggleView(viewToggleButton));
+
+        JButton addButton = createEnhancedButton("➕ Ajouter Étudiant", PRIMARY_COLOR, true);
+        addButton.addActionListener(e -> showStudentFormDialog(null));
+
+        buttonsPanel.add(viewToggleButton);
+        buttonsPanel.add(addButton);
+
+        return buttonsPanel;
+    }
+
+    private JButton createEnhancedButton(String text, Color bgColor, boolean isPrimary) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                Color currentColor;
+                if (getModel().isPressed()) {
+                    currentColor = bgColor.darker();
+                } else if (getModel().isRollover()) {
+                    currentColor = isPrimary ? bgColor.brighter() : HOVER_COLOR;
+                } else {
+                    currentColor = isPrimary ? bgColor : CARD_COLOR;
+                }
+
+                g2d.setColor(currentColor);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+
+                if (!isPrimary) {
+                    g2d.setColor(BORDER_COLOR);
+                    g2d.setStroke(new BasicStroke(1));
+                    g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+                }
+
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        button.setForeground(isPrimary ? Color.WHITE : TEXT_PRIMARY);
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(12, 24, 12, 24));
+
+        return button;
+    }
+
+    private JPanel createContentPanel() {
+        JPanel contentPanel = new JPanel(new CardLayout());
+        contentPanel.setBackground(BACKGROUND_COLOR);
+
+        JPanel tablePanel = createEnhancedTableView();
+        contentPanel.add(tablePanel, "table");
+
+        cardsPanel = createEnhancedCardsView();
+        JScrollPane cardsScrollPane = createEnhancedScrollPane(cardsPanel);
+        contentPanel.add(cardsScrollPane, "cards");
+
+        return contentPanel;
+    }
+
+    private JPanel createEnhancedTableView() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(BACKGROUND_COLOR);
+
+        String[] columns = { "Matricule", "Prénom", "Nom", "Email", "Adresse", "Niveau", "Parcours", "Photo",
+                "Actions" };
+        tableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 8;
+            }
+        };
+
+        studentTable = createEnhancedTable();
+
+        studentTable.getColumn("Photo").setCellRenderer(new EnhancedPhotoCellRenderer());
+        studentTable.getColumn("Photo").setPreferredWidth(70);
+        studentTable.getColumn("Photo").setMaxWidth(70);
+        studentTable.getColumn("Photo").setMinWidth(70);
+
+        studentTable.getColumn("Actions").setCellRenderer(new EnhancedButtonRenderer());
+        studentTable.getColumn("Actions").setCellEditor(new EnhancedButtonEditor());
+        studentTable.getColumn("Actions").setPreferredWidth(160);
+
+        JScrollPane scrollPane = createEnhancedScrollPane(studentTable);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private JTable createEnhancedTable() {
+        JTable table = new JTable(tableModel) {
+            @Override
+            public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
+                Component comp = super.prepareRenderer(renderer, row, column);
+
+                if (!isRowSelected(row)) {
+                    comp.setBackground(row % 2 == 0 ? CARD_COLOR : new Color(249, 250, 251));
+                } else {
+                    comp.setBackground(new Color(239, 246, 255));
+                }
+
+                if (comp instanceof JLabel) {
+                    ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
+                }
+
+                return comp;
+            }
+        };
+
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        table.setRowHeight(60);
+        table.setBackground(CARD_COLOR);
+        table.setSelectionBackground(new Color(239, 246, 255));
+        table.setSelectionForeground(TEXT_PRIMARY);
+        table.setGridColor(new Color(241, 245, 249));
+        table.setShowVerticalLines(false);
+        table.setIntercellSpacing(new Dimension(0, 1));
+
+        JTableHeader header = table.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        header.setBackground(new Color(248, 250, 252));
+        header.setForeground(TEXT_PRIMARY);
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, BORDER_COLOR));
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 50));
+        ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(JLabel.CENTER);
+
+        return table;
+    }
+
+    private JScrollPane createEnhancedScrollPane(Component component) {
+        JScrollPane scrollPane = new JScrollPane(component) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2d.setColor(new Color(0, 0, 0, 10));
+                g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 16, 16);
+
+                g2d.setColor(CARD_COLOR);
+                g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 16, 16);
+
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(CARD_COLOR);
+        scrollPane.setBackground(BACKGROUND_COLOR);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+
+        return scrollPane;
+    }
+
+    private JPanel createEnhancedCardsView() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridLayout(0, 3, 25, 25));
+        panel.setBackground(BACKGROUND_COLOR);
+        panel.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
+        return panel;
+    }
+
+    private void toggleView(JButton toggleButton) {
+        isTableView = !isTableView;
+        toggleButton.setText(isTableView ? "📋 Vue Cartes" : "📊 Vue Tableau");
+
+        CardLayout cl = (CardLayout) ((JPanel) ((JPanel) getComponent(1)).getComponent(1)).getLayout();
+        cl.show((JPanel) ((JPanel) getComponent(1)).getComponent(1), isTableView ? "table" : "cards");
+
+        if (!isTableView) {
+            updateCardsView();
+        }
+    }
+
+    private void updateCardsView() {
+        if (cardsPanel != null) {
+            cardsPanel.removeAll();
+            List<Etudiant> students = filterStudentsList();
+            for (Etudiant etudiant : students) {
+                if (etudiant != null) {
+                    JPanel card = createEnhancedStudentCard(etudiant);
+                    cardsPanel.add(card);
+                }
+            }
+            cardsPanel.revalidate();
+            cardsPanel.repaint();
+        }
+    }
+
+    private JPanel createEnhancedStudentCard(Etudiant etudiant) {
+        JPanel card = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2d.setColor(new Color(0, 0, 0, 15));
+                g2d.fillRoundRect(4, 4, getWidth() - 8, getHeight() - 8, 20, 20);
+
+                GradientPaint gradient = new GradientPaint(0, 0, CARD_COLOR, 0, getHeight(), new Color(253, 254, 255));
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 20, 20);
+
+                g2d.setColor(BORDER_COLOR);
+                g2d.setStroke(new BasicStroke(1));
+                g2d.drawRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 20, 20);
+
+                g2d.dispose();
+            }
+        };
+
+        card.setLayout(new BorderLayout(20, 20));
+        card.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        card.setPreferredSize(new Dimension(350, 320));
+
+        JPanel photoSection = createEnhancedCardPhotoSection(etudiant);
+        card.add(photoSection, BorderLayout.NORTH);
+
+        JPanel infoSection = createEnhancedCardInfoSection(etudiant);
+        card.add(infoSection, BorderLayout.CENTER);
+
+        JPanel actionsSection = createEnhancedCardActionsSection(etudiant);
+        card.add(actionsSection, BorderLayout.SOUTH);
+
+        return card;
+    }
+
+    private JPanel createEnhancedCardPhotoSection(Etudiant etudiant) {
+        JPanel photoSection = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        photoSection.setBackground(Color.WHITE);
+
+        EnhancedRoundImageLabel photoLabel = new EnhancedRoundImageLabel(70);
+        if (etudiant != null && etudiant.getphoto_url() != null && !etudiant.getphoto_url().isEmpty()) {
+            try {
+                photoLabel.setImage(new URL(etudiant.getphoto_url()));
+            } catch (Exception e) {
+                photoLabel.setText("👤");
+            }
+        } else {
+            photoLabel.setText("👤");
+        }
+
+        photoSection.add(photoLabel);
+        return photoSection;
+    }
+
+    private JPanel createEnhancedCardInfoSection(Etudiant etudiant) {
+        JPanel infoSection = new JPanel();
+        infoSection.setLayout(new BoxLayout(infoSection, BoxLayout.Y_AXIS));
+        infoSection.setBackground(Color.WHITE);
+
+        String name = etudiant != null ? (etudiant.getPrenom() != null ? etudiant.getPrenom() : "") + " " +
+                (etudiant.getNom() != null ? etudiant.getNom() : "") : "N/A";
+        JLabel nameLabel = new JLabel(name);
+        nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        nameLabel.setForeground(TEXT_PRIMARY);
+        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        String matricule = etudiant != null && etudiant.getMatricule() != null ? etudiant.getMatricule() : "N/A";
+        JLabel matriculeLabel = new JLabel("📋 " + matricule);
+        matriculeLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        matriculeLabel.setForeground(PRIMARY_COLOR);
+        matriculeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        String email = etudiant != null && etudiant.getEmail() != null ? etudiant.getEmail() : "N/A";
+        JLabel emailLabel = new JLabel("📧 " + email);
+        emailLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        emailLabel.setForeground(TEXT_SECONDARY);
+        emailLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        String niveau = etudiant != null ? getNiveauLabel(etudiant.getNiveauId()) : "N/A";
+        JLabel niveauLabel = new JLabel("📚 " + niveau);
+        niveauLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        niveauLabel.setForeground(TEXT_SECONDARY);
+        niveauLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        String parcours = etudiant != null ? getParcoursLabel(etudiant.getParcoursId()) : "N/A";
+        JLabel parcoursLabel = new JLabel("🎯 " + parcours);
+        parcoursLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        parcoursLabel.setForeground(TEXT_SECONDARY);
+        parcoursLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        infoSection.add(nameLabel);
+        infoSection.add(Box.createVerticalStrut(10));
+        infoSection.add(matriculeLabel);
+        infoSection.add(Box.createVerticalStrut(8));
+        infoSection.add(emailLabel);
+        infoSection.add(Box.createVerticalStrut(6));
+        infoSection.add(niveauLabel);
+        infoSection.add(Box.createVerticalStrut(6));
+        infoSection.add(parcoursLabel);
+
+        return infoSection;
+    }
+
+    private JPanel createEnhancedCardActionsSection(Etudiant etudiant) {
+        JPanel actionsSection = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        actionsSection.setBackground(Color.WHITE);
+
+        JButton editButton = createEnhancedCardActionButton("✏️", WARNING_COLOR, "Modifier");
+        editButton.addActionListener(e -> showStudentFormDialog(etudiant));
+
+        JButton deleteButton = createEnhancedCardActionButton("🗑️", ERROR_COLOR, "Supprimer");
+        deleteButton.addActionListener(e -> {
+            if (etudiant != null && etudiant.getId() != null) {
+                deleteStudent(etudiant.getId());
+            }
+        });
+
+        JButton updateButton = createEnhancedCardActionButton("🔄", SECONDARY_COLOR, "Niveau/Parcours");
+        updateButton.addActionListener(e -> showUpdateNiveauParcoursDialog(etudiant));
+
+        actionsSection.add(editButton);
+        actionsSection.add(deleteButton);
+        actionsSection.add(updateButton);
+
+        return actionsSection;
+    }
+
+    private JButton createEnhancedCardActionButton(String icon, Color color, String tooltip) {
+        JButton button = new JButton(icon) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                Color currentColor;
+                if (getModel().isPressed()) {
+                    currentColor = color.darker();
+                } else if (getModel().isRollover()) {
+                    currentColor = color.brighter();
+                } else {
+                    currentColor = color;
+                }
+
+                g2d.setColor(currentColor);
+                g2d.fillOval(0, 0, getWidth(), getHeight());
+
+                g2d.setColor(new Color(0, 0, 0, 20));
+                g2d.setStroke(new BasicStroke(1));
+                g2d.drawOval(1, 1, getWidth() - 3, getHeight() - 3);
+
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        button.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        button.setForeground(Color.WHITE);
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(40, 40));
+        button.setToolTipText(tooltip);
+
+        return button;
+    }
+
+    private void showStudentFormDialog(Etudiant etudiant) {
+        boolean isEdit = etudiant != null;
+        studentDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
+                isEdit ? "Modifier l'Étudiant" : "Ajouter un Étudiant", true);
+        studentDialog.setLayout(new BorderLayout());
+        studentDialog.setSize(650, 800);
+        studentDialog.setLocationRelativeTo(this);
+
+        loadNiveauxAndParcours();
+
+        JPanel mainPanel = createEnhancedDialogPanel();
+
+        JPanel headerPanel = createEnhancedDialogHeader(
+                isEdit ? "✏️ Modifier l'Étudiant" : "➕ Ajouter un Étudiant",
+                "Veuillez remplir tous les champs requis");
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+
+        JPanel formPanel = createEnhancedStudentFormPanel(etudiant, isEdit);
+        JScrollPane formScrollPane = new JScrollPane(formPanel);
+        formScrollPane.setBorder(null);
+        formScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        mainPanel.add(formScrollPane, BorderLayout.CENTER);
+
+        JPanel buttonPanel = createEnhancedStudentFormButtons(etudiant, isEdit);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        studentDialog.add(mainPanel);
+        studentDialog.setVisible(true);
+    }
+
+    private JPanel createEnhancedStudentFormPanel(Etudiant etudiant, boolean isEdit) {
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(CARD_COLOR);
+        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(15, 0, 15, 0);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        formPanel.add(createEnhancedFormLabel("Matricule *"), gbc);
+        gbc.gridy = 1;
+        matriculeField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getMatricule() : "");
+        matriculeField.setPreferredSize(new Dimension(550, 50));
+        formPanel.add(matriculeField, gbc);
+
+        gbc.gridy = 2;
+        formPanel.add(createEnhancedFormLabel("Prénom *"), gbc);
+        gbc.gridy = 3;
+        firstNameField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getPrenom() : "");
+        firstNameField.setPreferredSize(new Dimension(550, 50));
+        formPanel.add(firstNameField, gbc);
+
+        gbc.gridy = 4;
+        formPanel.add(createEnhancedFormLabel("Nom *"), gbc);
+        gbc.gridy = 5;
+        lastNameField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getNom() : "");
+        lastNameField.setPreferredSize(new Dimension(550, 50));
+        formPanel.add(lastNameField, gbc);
+
+        gbc.gridy = 6;
+        formPanel.add(createEnhancedFormLabel("Email *"), gbc);
+        gbc.gridy = 7;
+        emailField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getEmail() : "");
+        emailField.setPreferredSize(new Dimension(550, 50));
+        emailField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                validateEmailField(emailField);
+            }
+        });
+        formPanel.add(emailField, gbc);
+
+        gbc.gridy = 8;
+        formPanel.add(createEnhancedFormLabel("Adresse"), gbc);
+        gbc.gridy = 9;
+        adresseField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getAdresse() : "");
+        adresseField.setPreferredSize(new Dimension(550, 50));
+        formPanel.add(adresseField, gbc);
+
+        gbc.gridy = 10;
+        formPanel.add(createEnhancedFormLabel("Niveau *"), gbc);
+        gbc.gridy = 11;
+        niveauComboBox = createEnhancedFormComboBox();
+        niveauComboBox.setPreferredSize(new Dimension(550, 50));
+        if (allNiveaux != null) {
+            for (Niveau niveau : new ArrayList<>(allNiveaux)) {
+                if (niveau != null) {
+                    niveauComboBox.addItem(niveau);
+                }
+            }
+        }
+        if (isEdit && etudiant != null && etudiant.getNiveauId() != null && allNiveaux != null) {
+            for (Niveau niveau : new ArrayList<>(allNiveaux)) {
+                if (niveau != null && niveau.getId() != null && niveau.getId().equals(etudiant.getNiveauId())) {
+                    niveauComboBox.setSelectedItem(niveau);
+                    break;
+                }
+            }
+        }
+        formPanel.add(niveauComboBox, gbc);
+
+        gbc.gridy = 12;
+        formPanel.add(createEnhancedFormLabel("Parcours *"), gbc);
+        gbc.gridy = 13;
+        parcoursComboBox = createEnhancedFormComboBox();
+        parcoursComboBox.setPreferredSize(new Dimension(550, 50));
+        if (allParcours != null) {
+            for (Parcours parcours : new ArrayList<>(allParcours)) {
+                if (parcours != null) {
+                    parcoursComboBox.addItem(parcours);
+                }
+            }
+        }
+        if (isEdit && etudiant != null && etudiant.getParcoursId() != null && allParcours != null) {
+            for (Parcours parcours : new ArrayList<>(allParcours)) {
+                if (parcours != null && parcours.getId() != null && parcours.getId().equals(etudiant.getParcoursId())) {
+                    parcoursComboBox.setSelectedItem(parcours);
+                    break;
+                }
+            }
+        }
+        formPanel.add(parcoursComboBox, gbc);
+
+        gbc.gridy = 14;
+        formPanel.add(createEnhancedFormLabel("Photo"), gbc);
+        gbc.gridy = 15;
+        JPanel photoPanel = createEnhancedPhotoSelectionPanel();
+        formPanel.add(photoPanel, gbc);
+
+        return formPanel;
+    }
+
+    private JPanel createEnhancedPhotoSelectionPanel() {
+        JPanel photoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
+        photoPanel.setBackground(CARD_COLOR);
+
+        JButton choosePhotoButton = createEnhancedButton("📷 Choisir une Photo", SECONDARY_COLOR, false);
+        choosePhotoButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                    "Images (*.jpg, *.png, *.jpeg)", "jpg", "png", "jpeg"));
+
+            if (fileChooser.showOpenDialog(studentDialog) == JFileChooser.APPROVE_OPTION) {
+                selectedPhoto = fileChooser.getSelectedFile();
+                if (selectedPhoto != null) {
+                    photoPreviewLabel.setText("📷 " + selectedPhoto.getName());
+                    photoPreviewLabel.setForeground(SUCCESS_COLOR);
+                }
+            }
+        });
+
+        photoPreviewLabel = new JLabel("Aucune photo sélectionnée");
+        photoPreviewLabel.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+        photoPreviewLabel.setForeground(TEXT_SECONDARY);
+
+        photoPanel.add(choosePhotoButton);
+        photoPanel.add(photoPreviewLabel);
+
+        return photoPanel;
+    }
+
+    private JPanel createEnhancedStudentFormButtons(Etudiant etudiant, boolean isEdit) {
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 0));
+        buttonPanel.setBackground(CARD_COLOR);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
+
+        loadNiveauxAndParcours();
+
+        JButton saveButton = createEnhancedButton("💾 Enregistrer", PRIMARY_COLOR, true);
+        JButton cancelButton = createEnhancedButton("❌ Annuler", new Color(156, 163, 175), false);
+
+        saveButton.addActionListener(e -> saveStudent(etudiant, isEdit));
+        cancelButton.addActionListener(e -> studentDialog.dispose());
+
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+
+        return buttonPanel;
+    }
+
+    private void saveStudent(Etudiant etudiant, boolean isEdit) {
+        String matricule = matriculeField.getText() != null ? matriculeField.getText().trim() : "";
+        String firstName = firstNameField.getText() != null ? firstNameField.getText().trim() : "";
+        String lastName = lastNameField.getText() != null ? lastNameField.getText().trim() : "";
+        String email = emailField.getText() != null ? emailField.getText().trim() : "";
+        String adresse = adresseField.getText() != null ? adresseField.getText().trim() : "";
+        Niveau selectedNiveau = (Niveau) niveauComboBox.getSelectedItem();
+        Parcours selectedParcours = (Parcours) parcoursComboBox.getSelectedItem();
+
+        if (matricule.isEmpty() || firstName.isEmpty() || lastName.isEmpty() || email.isEmpty()) {
+            showEnhancedErrorDialog("Tous les champs marqués d'un * sont obligatoires.");
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            showEnhancedErrorDialog("Veuillez saisir une adresse email valide.");
+            emailField.requestFocus();
+            return;
+        }
+
+        if (selectedNiveau == null) {
+            showEnhancedErrorDialog("Veuillez sélectionner un niveau.");
+            return;
+        }
+
+        if (selectedParcours == null) {
+            showEnhancedErrorDialog("Veuillez sélectionner un parcours.");
+            return;
+        }
+
+        Etudiant student = new Etudiant();
+        student.setMatricule(matricule);
+        student.setPrenom(firstName);
+        student.setNom(lastName);
+        student.setEmail(email);
+        student.setAdresse(adresse);
+        student.setNiveauId(selectedNiveau.getId());
+        student.setParcoursId(selectedParcours.getId());
+
+        try {
+            if (isEdit && etudiant != null) {
+                student.setId(etudiant.getId());
+                studentService.updateEtudiant(etudiant.getId(), student, selectedPhoto);
+                showSuccessNotification("Étudiant modifié avec succès!");
+            } else {
+                studentService.addEtudiant(student, responsableId, selectedPhoto);
+                showSuccessNotification("Étudiant ajouté avec succès!");
+            }
+            loadStudents();
+            clearFields();
+            studentDialog.dispose();
+        } catch (ApiException ex) {
+            showEnhancedErrorDialog("Erreur lors de l'enregistrement: " + ex.getMessage());
+        }
+    }
+
+    private void showUpdateNiveauParcoursDialog(Etudiant etudiant) {
+        if (etudiant == null) {
+            showErrorNotification("Erreur: Étudiant non sélectionné.");
+            return;
+        }
+
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
+                "Modifier Niveau & Parcours", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(550, 450);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel mainPanel = createEnhancedDialogPanel();
+
+        JPanel headerPanel = createEnhancedDialogHeader(
+                "🔄 Modifier Niveau & Parcours",
+                "Sélectionnez le nouveau niveau et parcours pour " +
+                        (etudiant.getPrenom() != null ? etudiant.getPrenom() : "") + " " +
+                        (etudiant.getNom() != null ? etudiant.getNom() : ""));
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(CARD_COLOR);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(20, 0, 20, 0);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        JLabel currentInfoLabel = new JLabel("📋 " +
+                (etudiant.getMatricule() != null ? etudiant.getMatricule() : "N/A") + " - " +
+                (etudiant.getPrenom() != null ? etudiant.getPrenom() : "") + " " +
+                (etudiant.getNom() != null ? etudiant.getNom() : ""));
+        currentInfoLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        currentInfoLabel.setForeground(TEXT_PRIMARY);
+        formPanel.add(currentInfoLabel, gbc);
+
+        gbc.gridy = 1;
+        formPanel.add(createEnhancedFormLabel("Nouveau Niveau *"), gbc);
+        gbc.gridy = 2;
+        JComboBox<Niveau> updateNiveauComboBox = createEnhancedFormComboBox();
+        updateNiveauComboBox.setPreferredSize(new Dimension(450, 50));
+        if (allNiveaux != null) {
+            for (Niveau niveau : new ArrayList<>(allNiveaux)) {
+                if (niveau != null) {
+                    updateNiveauComboBox.addItem(niveau);
+                }
+            }
+        }
+        if (etudiant.getNiveauId() != null && allNiveaux != null) {
+            for (Niveau niveau : new ArrayList<>(allNiveaux)) {
+                if (niveau != null && niveau.getId() != null && niveau.getId().equals(etudiant.getNiveauId())) {
+                    updateNiveauComboBox.setSelectedItem(niveau);
+                    break;
+                }
+            }
+        }
+        formPanel.add(updateNiveauComboBox, gbc);
+
+        gbc.gridy = 3;
+        formPanel.add(createEnhancedFormLabel("Nouveau Parcours *"), gbc);
+        gbc.gridy = 4;
+        JComboBox<Parcours> updateParcoursComboBox = createEnhancedFormComboBox();
+        updateParcoursComboBox.setPreferredSize(new Dimension(450, 50));
+        if (allParcours != null) {
+            for (Parcours parcours : new ArrayList<>(allParcours)) {
+                if (parcours != null) {
+                    updateParcoursComboBox.addItem(parcours);
+                }
+            }
+        }
+        if (etudiant.getParcoursId() != null && allParcours != null) {
+            for (Parcours parcours : new ArrayList<>(allParcours)) {
+                if (parcours != null && parcours.getId() != null && parcours.getId().equals(etudiant.getParcoursId())) {
+                    updateParcoursComboBox.setSelectedItem(parcours);
+                    break;
+                }
+            }
+        }
+        formPanel.add(updateParcoursComboBox, gbc);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 0));
+        buttonPanel.setBackground(CARD_COLOR);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
+
+        JButton saveButton = createEnhancedButton("💾 Enregistrer", PRIMARY_COLOR, true);
+        JButton cancelButton = createEnhancedButton("❌ Annuler", new Color(156, 163, 175), false);
+
+        saveButton.addActionListener(e -> {
+            Niveau selectedNiveau = (Niveau) updateNiveauComboBox.getSelectedItem();
+            Parcours selectedParcours = (Parcours) updateParcoursComboBox.getSelectedItem();
+
+            if (selectedNiveau == null || selectedParcours == null) {
+                showEnhancedErrorDialog("Veuillez sélectionner un niveau et un parcours.");
+                return;
+            }
+
+            try {
+                studentService.updateNiveauParcours(etudiant.getId(), selectedNiveau.getId(), selectedParcours.getId());
+                showSuccessNotification("Niveau et parcours mis à jour avec succès!");
+                loadStudents();
+                dialog.dispose();
+            } catch (ApiException ex) {
+                showEnhancedErrorDialog("Erreur lors de la mise à jour: " + ex.getMessage());
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+
+        mainPanel.add(formPanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
+    }
+
+    private void deleteStudent(String id) {
+        if (id == null) {
+            showErrorNotification("Erreur: ID de l'étudiant non spécifié.");
+            return;
+        }
+        showEnhancedConfirmDialog(
+                "Confirmer la suppression",
+                "Êtes-vous sûr de vouloir supprimer cet étudiant ?",
+                "Cette action est irréversible et supprimera toutes les données associées.",
+                () -> performDeleteStudent(id));
+    }
+
+    private void performDeleteStudent(String id) {
+        try {
+            studentService.deleteEtudiant(id);
+            loadStudents();
+            showSuccessNotification("Étudiant supprimé avec succès!");
+        } catch (ApiException ex) {
+            showErrorNotification("Erreur lors de la suppression: " + ex.getMessage());
+        }
+    }
+
+    private void loadStudents() {
+        SwingWorker<List<Etudiant>, Void> worker = new SwingWorker<List<Etudiant>, Void>() {
+            @Override
+            protected List<Etudiant> doInBackground() {
+                return studentService.getAllEtudiants(responsableId);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<Etudiant> students = get();
+                    allStudents = students != null ? new ArrayList<>(students) : new ArrayList<>();
+                    filterStudents();
+                } catch (Exception ex) {
+                    showErrorNotification("Erreur lors du chargement des étudiants: " + ex.getMessage());
+                    allStudents = new ArrayList<>();
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private void filterStudents() {
+        if (tableModel != null) {
+            tableModel.setRowCount(0);
+            List<Etudiant> students = filterStudentsList();
+            for (Etudiant e : students) {
+                if (e != null) {
+                    tableModel.addRow(new Object[] {
+                            e.getMatricule() != null ? e.getMatricule() : "",
+                            e.getPrenom() != null ? e.getPrenom() : "",
+                            e.getNom() != null ? e.getNom() : "",
+                            e.getEmail() != null ? e.getEmail() : "",
+                            e.getAdresse() != null ? e.getAdresse() : "",
+                            getNiveauLabel(e.getNiveauId()),
+                            getParcoursLabel(e.getParcoursId()),
+                            e.getphoto_url(),
+                            "Actions"
+                    });
+                }
+            }
+            if (!isTableView) {
+                updateCardsView();
+            }
+        }
+    }
+
+    private List<Etudiant> filterStudentsList() {
+        List<Etudiant> filtered = new ArrayList<>();
+        if (allStudents == null || allStudents.isEmpty()) {
+            return filtered;
+        }
+
+        String query = searchField.getText() != null ? searchField.getText().toLowerCase() : "";
+        if (query.equals("🔍 rechercher des étudiants..."))
+            query = "";
+
+        String selectedNiveau = niveauFilterComboBox.getSelectedItem() != null
+                ? (String) niveauFilterComboBox.getSelectedItem()
+                : "TOUS LES NIVEAUX";
+        String selectedParcours = parcoursFilterComboBox.getSelectedItem() != null
+                ? (String) parcoursFilterComboBox.getSelectedItem()
+                : "TOUS LES PARCOURS";
+
+        for (Etudiant e : allStudents) {
+            if (e == null)
+                continue;
+            boolean matchesSearch = query.isEmpty() ||
+                    (e.getPrenom() != null && e.getPrenom().toLowerCase().contains(query)) ||
+                    (e.getNom() != null && e.getNom().toLowerCase().contains(query)) ||
+                    (e.getEmail() != null && e.getEmail().toLowerCase().contains(query)) ||
+                    (e.getMatricule() != null && e.getMatricule().toLowerCase().contains(query));
+
+            boolean matchesNiveau = selectedNiveau.equals("TOUS LES NIVEAUX") ||
+                    getNiveauLabel(e.getNiveauId()).equals(selectedNiveau);
+
+            boolean matchesParcours = selectedParcours.equals("TOUS LES PARCOURS") ||
+                    getParcoursLabel(e.getParcoursId()).equals(selectedParcours);
+
+            if (matchesSearch && matchesNiveau && matchesParcours) {
+                filtered.add(e);
+            }
+        }
+        return filtered;
+    }
+
+    private String getNiveauLabel(String niveauId) {
+        if (niveauId == null || allNiveaux == null)
+            return "N/A";
+        for (Niveau niveau : new ArrayList<>(allNiveaux)) {
+            if (niveau != null && niveau.getId() != null && niveau.getId().equals(niveauId)) {
+                return niveau.getNom() != null ? niveau.getNom() : "N/A";
+            }
+        }
+        return "Inconnu";
+    }
+
+    private String getParcoursLabel(String parcoursId) {
+        if (parcoursId == null || allParcours == null)
+            return "N/A";
+        for (Parcours parcours : new ArrayList<>(allParcours)) {
+            if (parcours != null && parcours.getId() != null && parcours.getId().equals(parcoursId)) {
+                return parcours.getNom() != null ? parcours.getNom() : "N/A";
+            }
+        }
+        return "Inconnu";
+    }
+
+    private boolean isValidEmail(String email) {
+        if (email == null)
+            return false;
+        return Pattern.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", email);
+    }
+
+    private void validateEmailField(JTextField field) {
+        String email = field.getText() != null ? field.getText().trim() : "";
+        if (!email.isEmpty()) {
+            if (isValidEmail(email)) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(SUCCESS_COLOR),
+                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+                field.setToolTipText("✅ Email valide");
+            } else {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(ERROR_COLOR),
+                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+                field.setToolTipText("❌ Format d'email invalide");
+            }
+        } else {
+            field.setBorder(BorderFactory.createCompoundBorder(
+                    new ModernBorder(BORDER_COLOR),
+                    BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+            field.setToolTipText("");
+        }
+    }
+
+    private void clearFields() {
+        matriculeField.setText("");
+        firstNameField.setText("");
+        lastNameField.setText("");
+        emailField.setText("");
+        adresseField.setText("");
+        niveauComboBox.setSelectedIndex(-1);
+        parcoursComboBox.setSelectedIndex(-1);
+        selectedPhoto = null;
+        if (photoPreviewLabel != null) {
+            photoPreviewLabel.setText("Aucune photo sélectionnée");
+            photoPreviewLabel.setForeground(TEXT_SECONDARY);
+        }
+    }
+
+    private JPanel createEnhancedDialogPanel() {
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                GradientPaint gradient = new GradientPaint(0, 0, CARD_COLOR, 0, getHeight(), new Color(253, 254, 255));
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 24, 24);
+
+                g2d.dispose();
+            }
+        };
+        panel.setLayout(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(35, 35, 35, 35));
+        return panel;
+    }
+
+    private JPanel createEnhancedDialogHeader(String title, String subtitle) {
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 35, 0));
+
+        JLabel titleLabel = new JLabel(title != null ? title : "");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setForeground(TEXT_PRIMARY);
+
+        JLabel subtitleLabel = new JLabel(subtitle != null ? subtitle : "");
+        subtitleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        subtitleLabel.setForeground(TEXT_SECONDARY);
+
+        JPanel titlePanel = new JPanel();
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+        titlePanel.setBackground(Color.WHITE);
+        titlePanel.add(titleLabel);
+        titlePanel.add(Box.createVerticalStrut(8));
+        titlePanel.add(subtitleLabel);
+
+        headerPanel.add(titlePanel, BorderLayout.WEST);
+        return headerPanel;
+    }
+
+    private JLabel createEnhancedFormLabel(String text) {
+        JLabel label = new JLabel(text != null ? text : "");
+        label.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        label.setForeground(TEXT_PRIMARY);
+        return label;
+    }
+
+    private JTextField createEnhancedTextField(String text) {
+        JTextField field = new JTextField(text != null ? text : "") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(getBackground());
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        field.setBackground(new Color(249, 250, 251));
+        field.setForeground(TEXT_PRIMARY);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                field.setBackground(CARD_COLOR);
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(PRIMARY_COLOR, 2),
+                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                field.setBackground(new Color(249, 250, 251));
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(BORDER_COLOR),
+                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+            }
+        });
+
+        return field;
+    }
+
+    private <T> JComboBox<T> createEnhancedFormComboBox() {
+        JComboBox<T> comboBox = new JComboBox<T>() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(getBackground());
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        comboBox.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        comboBox.setBackground(new Color(249, 250, 251));
+        comboBox.setForeground(TEXT_PRIMARY);
+        comboBox.setBorder(BorderFactory.createCompoundBorder(
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+
+        return comboBox;
+    }
+
+    private void showEnhancedConfirmDialog(String title, String message, String subtitle, Runnable onConfirm) {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
+                title != null ? title : "Confirmation", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(550, 400);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel mainPanel = createEnhancedDialogPanel();
+
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(Color.WHITE);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+
+        JLabel iconLabel = new JLabel("⚠️");
+        iconLabel.setFont(new Font("Segoe UI", Font.PLAIN, 64));
+        iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel messageLabel = new JLabel(message != null ? message : "");
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        messageLabel.setForeground(TEXT_PRIMARY);
+        messageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel subtitleLabel = new JLabel(subtitle != null ? subtitle : "");
+        subtitleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        subtitleLabel.setForeground(TEXT_SECONDARY);
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        contentPanel.add(iconLabel);
+        contentPanel.add(Box.createVerticalStrut(20));
+        contentPanel.add(messageLabel);
+        contentPanel.add(Box.createVerticalStrut(12));
+        contentPanel.add(subtitleLabel);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 0));
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
+
+        JButton confirmButton = createEnhancedButton("🗑️ Supprimer", ERROR_COLOR, true);
+        JButton cancelButton = createEnhancedButton("❌ Annuler", new Color(156, 163, 175), false);
+
+        confirmButton.addActionListener(e -> {
+            dialog.dispose();
+            if (onConfirm != null) {
+                onConfirm.run();
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(confirmButton);
+        buttonPanel.add(cancelButton);
+
+        mainPanel.add(contentPanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
+    }
+
+    private void showEnhancedErrorDialog(String message) {
+        JOptionPane.showMessageDialog(this,
+                message != null ? message : "Une erreur est survenue.",
+                "❌ Erreur de Validation",
+                JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void showSuccessNotification(String message) {
+        createEnhancedToastNotification(message != null ? message : "Opération réussie.", SUCCESS_COLOR, "✅");
+    }
+
+    private void showErrorNotification(String message) {
+        createEnhancedToastNotification(message != null ? message : "Une erreur est survenue.", ERROR_COLOR, "❌");
+    }
+
+    private void showWarningNotification(String message) {
+        createEnhancedToastNotification(message != null ? message : "Attention.", WARNING_COLOR, "⚠️");
+    }
+
+    private void createEnhancedToastNotification(String message, Color bgColor, String icon) {
+        JWindow toast = new JWindow();
+        toast.setAlwaysOnTop(true);
+
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2d.setColor(new Color(0, 0, 0, 120));
+                g2d.fillRoundRect(4, 4, getWidth() - 8, getHeight() - 8, 16, 16);
+
+                GradientPaint gradient = new GradientPaint(0, 0, bgColor, 0, getHeight(), bgColor.darker());
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 16, 16);
+
+                g2d.dispose();
+            }
+        };
+
+        panel.setLayout(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(18, 25, 18, 25));
+
+        JLabel messageLabel = new JLabel((icon != null ? icon : "") + " " + (message != null ? message : ""));
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        messageLabel.setForeground(Color.WHITE);
+
+        panel.add(messageLabel, BorderLayout.CENTER);
+        toast.add(panel);
+        toast.pack();
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int finalX = screenSize.width - toast.getWidth() - 30;
+        int finalY = 30;
+
+        toast.setLocation(screenSize.width, finalY);
+        toast.setVisible(true);
+
+        Timer slideInTimer = new Timer(10, null);
+        slideInTimer.addActionListener(new ActionListener() {
+            int currentX = screenSize.width;
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                currentX -= 15;
+                if (currentX <= finalX) {
+                    currentX = finalX;
+                    slideInTimer.stop();
+                }
+                toast.setLocation(currentX, finalY);
+            }
+        });
+        slideInTimer.start();
+
+        Timer hideTimer = new Timer(4000, e -> {
+            Timer slideOutTimer = new Timer(10, null);
+            slideOutTimer.addActionListener(new ActionListener() {
+                int currentX = finalX;
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    currentX += 15;
+                    if (currentX >= screenSize.width) {
+                        slideOutTimer.stop();
+                        toast.setVisible(false);
+                        toast.dispose();
+                    } else {
+                        toast.setLocation(currentX, finalY);
+                    }
+                }
+            });
+            slideOutTimer.start();
+        });
+        hideTimer.setRepeats(false);
+        hideTimer.start();
+    }
+
+    private static class ModernBorder extends AbstractBorder {
+        private final Color color;
+        private final int thickness;
+
+        public ModernBorder(Color color) {
+            this(color, 1);
+        }
+
+        public ModernBorder(Color color, int thickness) {
+            this.color = color;
+            this.thickness = thickness;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(color);
+            g2d.setStroke(new BasicStroke(thickness));
+            g2d.drawRoundRect(x, y, width - 1, height - 1, 12, 12);
+            g2d.dispose();
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(thickness, thickness, thickness, thickness);
+        }
+    }
+
+    private class EnhancedPhotoCellRenderer extends JPanel implements TableCellRenderer {
+        private EnhancedRoundImageLabel imageLabel;
+
+        public EnhancedPhotoCellRenderer() {
+            setLayout(new FlowLayout(FlowLayout.CENTER, 0, 8));
+            setOpaque(false);
+            imageLabel = new EnhancedRoundImageLabel(45);
+            add(imageLabel);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+
+            setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+
+            if (allStudents != null && row >= 0 && row < allStudents.size()) {
+                Etudiant etudiant = allStudents.get(row);
+                if (etudiant != null && etudiant.getphoto_url() != null && !etudiant.getphoto_url().isEmpty()) {
+                    try {
+                        imageLabel.setImage(new URL(etudiant.getphoto_url()));
+                    } catch (Exception e) {
+                        imageLabel.setText("👤");
+                    }
+                } else {
+                    imageLabel.setText("👤");
+                }
+            } else {
+                imageLabel.setText("👤");
+            }
+
+            return this;
+        }
+    }
+
+    private class EnhancedButtonRenderer extends JPanel implements TableCellRenderer {
+        private JButton editButton;
+        private JButton deleteButton;
+        private JButton updateButton;
+
+        public EnhancedButtonRenderer() {
+            setLayout(new FlowLayout(FlowLayout.CENTER, 8, 8));
+            setOpaque(false);
+
+            editButton = createEnhancedTableActionButton("✏️", WARNING_COLOR);
+            deleteButton = createEnhancedTableActionButton("🗑️", ERROR_COLOR);
+            updateButton = createEnhancedTableActionButton("🔄", SECONDARY_COLOR);
+
+            add(editButton);
+            add(deleteButton);
+            add(updateButton);
+        }
+
+        private JButton createEnhancedTableActionButton(String text, Color color) {
+            JButton button = new JButton(text) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2d = (Graphics2D) g.create();
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2d.setColor(color);
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                    g2d.dispose();
+                    super.paintComponent(g);
+                }
+            };
+
+            button.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            button.setForeground(Color.WHITE);
+            button.setContentAreaFilled(false);
+            button.setBorderPainted(false);
+            button.setFocusPainted(false);
+            button.setPreferredSize(new Dimension(35, 30));
+            button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            return button;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+            return this;
+        }
+    }
+
+    private class EnhancedButtonEditor extends AbstractCellEditor implements TableCellEditor {
+        private JPanel panel;
+        private JButton editButton;
+        private JButton deleteButton;
+        private JButton updateButton;
+        private Etudiant currentStudent;
+
+        public EnhancedButtonEditor() {
+            panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 8));
+            panel.setOpaque(false);
+
+            editButton = createEnhancedTableActionButton("✏️", WARNING_COLOR);
+            deleteButton = createEnhancedTableActionButton("🗑️", ERROR_COLOR);
+            updateButton = createEnhancedTableActionButton("🔄", SECONDARY_COLOR);
+
+            editButton.addActionListener(e -> {
+                fireEditingStopped();
+                if (currentStudent != null) {
+                    showStudentFormDialog(currentStudent);
+                }
+            });
+
+            deleteButton.addActionListener(e -> {
+                fireEditingStopped();
+                if (currentStudent != null && currentStudent.getId() != null) {
+                    deleteStudent(currentStudent.getId());
+                }
+            });
+
+            updateButton.addActionListener(e -> {
+                fireEditingStopped();
+                if (currentStudent != null) {
+                    showUpdateNiveauParcoursDialog(currentStudent);
+                }
+            });
+
+            panel.add(editButton);
+            panel.add(deleteButton);
+            panel.add(updateButton);
+        }
+
+        private JButton createEnhancedTableActionButton(String text, Color color) {
+            JButton button = new JButton(text) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2d = (Graphics2D) g.create();
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    if (getModel().isPressed()) {
+                        g2d.setColor(color.darker());
+                    } else if (getModel().isRollover()) {
+                        g2d.setColor(color.brighter());
+                    } else {
+                        g2d.setColor(color);
+                    }
+
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                    g2d.dispose();
+                    super.paintComponent(g);
+                }
+            };
+
+            button.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            button.setForeground(Color.WHITE);
+            button.setContentAreaFilled(false);
+            button.setBorderPainted(false);
+            button.setFocusPainted(false);
+            button.setPreferredSize(new Dimension(35, 30));
+            button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            return button;
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                boolean isSelected, int row, int column) {
+
+            currentStudent = (allStudents != null && row >= 0 && row < allStudents.size()) ? allStudents.get(row)
+                    : null;
+
+            panel.setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+            return panel;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Actions";
+        }
+    }
+
+    private static class EnhancedRoundImageLabel extends JLabel {
+        private ImageIcon imageIcon;
+        private final int size;
+        private final Color borderColor = new Color(226, 232, 240);
+
+        public EnhancedRoundImageLabel(int size) {
+            this.size = size;
+            setPreferredSize(new Dimension(size, size));
+            setHorizontalAlignment(CENTER);
+            setVerticalAlignment(CENTER);
+            setFont(new Font("Segoe UI", Font.PLAIN, size / 3));
+        }
+
+        public void setImage(URL url) {
+            try {
+                if (url != null) {
+                    ImageIcon icon = new ImageIcon(url);
+                    Image scaled = icon.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH);
+                    imageIcon = new ImageIcon(scaled);
+                    setText("");
+                    repaint();
+                } else {
+                    imageIcon = null;
+                    setText("👤");
+                    repaint();
+                }
+            } catch (Exception e) {
+                imageIcon = null;
+                setText("👤");
+                repaint();
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            Ellipse2D.Double circle = new Ellipse2D.Double(0, 0, size, size);
+            g2.setClip(circle);
+
+            if (imageIcon != null) {
+                g2.drawImage(imageIcon.getImage(), 0, 0, size, size, this);
+            } else {
+                GradientPaint gradient = new GradientPaint(0, 0, new Color(248, 250, 252),
+                        0, size, new Color(241, 245, 249));
+                g2.setPaint(gradient);
+                g2.fill(circle);
+                g2.setColor(TEXT_SECONDARY);
+                super.paintComponent(g2);
+            }
+
+            g2.setClip(null);
+            g2.setColor(borderColor);
+            g2.setStroke(new BasicStroke(2));
+            g2.draw(circle);
+
+            g2.dispose();
+        }
+    }
+}
+package com.studentmanagement.ui.common;
+
+import java.awt.CardLayout;
+import java.awt.Component;
+import java.awt.EventQueue;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import com.studentmanagement.ui.auth.LoginFrame;
+import com.studentmanagement.ui.auth.RegisterFrame;
+import com.studentmanagement.ui.dashboard.DashboardFrame;
+import com.studentmanagement.ui.etudiant.StudentManagementFrame;
+import com.studentmanagement.ui.parameters.ParametersFrame;
+import com.studentmanagement.ui.grades.GradesManagementFrame;
+import com.studentmanagement.model.ResponsableResponse;
+
+public class MainWindow extends JFrame {
+    private static final long serialVersionUID = 1L;
+    private JPanel contentPane;
+    private CardLayout cardLayout;
+    private ResponsableResponse currentResponsable;
+
+    public MainWindow() {
+        setTitle("Gestion des Étudiants");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setBounds(100, 100, 1400, 900);
+        setLocationRelativeTo(null);
+
+        cardLayout = new CardLayout();
+        contentPane = new JPanel(cardLayout);
+        setContentPane(contentPane);
+
+        contentPane.add(new LoginFrame(this), "Login");
+        contentPane.add(new RegisterFrame(this), "Register");
+
+        cardLayout.show(contentPane, "Login");
+    }
+
+    public void showPanel(String panelName) {
+        cardLayout.show(contentPane, panelName);
+    }
+
+    public void setCurrentResponsable(ResponsableResponse responsable) {
+        this.currentResponsable = responsable;
+        if (responsable != null) {
+            if (contentPane.getComponentCount() <= 2) {
+                contentPane.add(new DashboardFrame(this), "Dashboard");
+                contentPane.add(new StudentManagementFrame(this), "Students");
+                contentPane.add(new ParametersFrame(this), "Settings");
+                contentPane.add(new GradesManagementFrame(this), "Grades");
+            }
+        } else {
+            removePanel("Dashboard");
+            removePanel("Students");
+            removePanel("Settings");
+            removePanel("Grades");
+            showPanel("Login");
+        }
+    }
+
+    private void removePanel(String panelName) {
+        Component[] components = contentPane.getComponents();
+        for (Component comp : components) {
+            String name = getComponentName(comp);
+            if (panelName.equals(name)) {
+                contentPane.remove(comp);
+                break;
+            }
+        }
+    }
+
+    private String getComponentName(Component comp) {
+        Component[] components = contentPane.getComponents();
+        for (int i = 0; i < components.length; i++) {
+            if (components[i] == comp) {
+                String[] names = new String[]{"Login", "Register", "Dashboard", "Students", "Settings", "Grades"};
+                if (i < names.length) {
+                    return names[i];
+                }
+            }
+        }
+        return null;
+    }
+
+    public ResponsableResponse getCurrentResponsable() {
+        return currentResponsable;
+    }
+
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> {
+            try {
+                MainWindow frame = new MainWindow();
+                frame.setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+}
+
+package com.studentmanagement.ui.grades;
+
+import com.studentmanagement.model.*;
+import com.studentmanagement.service.StudentService;
+import com.studentmanagement.service.ApiException;
+import com.studentmanagement.ui.common.MainWindow;
+import com.studentmanagement.ui.common.SidebarUtil;
+import com.studentmanagement.ui.common.ModernComponents;
+
+import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.border.AbstractBorder;
+import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.geom.RoundRectangle2D;
+import java.util.List;
+import java.util.regex.Pattern;
+
+public class GradesManagementFrame extends JPanel {
+    private static final long serialVersionUID = 1L;
+    private StudentService studentService;
+    private MainWindow mainWindow;
+    private DefaultTableModel gradesTableModel;
+    private DefaultTableModel averagesTableModel;
+    private DefaultTableModel classStatsTableModel;
+    private JTable gradesTable;
+    private JTable averagesTable;
+    private JTable classStatsTable;
+    private JComboBox<Etudiant> studentComboBox;
+    private JComboBox<String> semestreComboBox;
+    private JComboBox<String> anneeComboBox;
+    private List<Etudiant> allStudents;
+    private List<Matiere> allMatieres;
+    private List<Niveau> allNiveaux;
+
+    // Modern Color Palette
+    private static final Color PRIMARY_COLOR = new Color(99, 102, 241);
+    private static final Color SECONDARY_COLOR = new Color(139, 92, 246);
+    private static final Color SUCCESS_COLOR = new Color(34, 197, 94);
+    private static final Color WARNING_COLOR = new Color(251, 146, 60);
+    private static final Color ERROR_COLOR = new Color(239, 68, 68);
+    private static final Color BACKGROUND_COLOR = new Color(248, 250, 252);
+    private static final Color CARD_COLOR = Color.WHITE;
+    private static final Color TEXT_PRIMARY = new Color(15, 23, 42);
+    private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
+    private static final Color BORDER_COLOR = new Color(226, 232, 240);
+
+    public GradesManagementFrame(MainWindow mainWindow) {
+        this.mainWindow = mainWindow;
+        this.studentService = new StudentService();
+        this.studentService.setJwtToken(mainWindow.getCurrentResponsable().getToken());
+        initializeUI();
+        loadData();
+        loadGrades();
+        loadStatistics();
+    }
+
+    private void initializeUI() {
+        setLayout(new BorderLayout());
+        setBackground(BACKGROUND_COLOR);
+
+        JPanel sidebar = SidebarUtil.createSidebar(mainWindow, "Grades");
+        add(sidebar, BorderLayout.WEST);
+
+        JPanel mainContent = createMainContent();
+        add(mainContent, BorderLayout.CENTER);
+    }
+
+    private JPanel createMainContent() {
+        JPanel mainContent = new JPanel(new BorderLayout());
+        mainContent.setBackground(BACKGROUND_COLOR);
+        mainContent.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+
+        // Header with title and breadcrumb
+        JPanel headerPanel = createHeaderPanel();
+        mainContent.add(headerPanel, BorderLayout.NORTH);
+
+        // Modern tabbed pane
+        JTabbedPane tabbedPane = createModernTabbedPane();
+        mainContent.add(tabbedPane, BorderLayout.CENTER);
+
+        return mainContent;
+    }
+
+    private JPanel createHeaderPanel() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(BACKGROUND_COLOR);
+        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+
+        JLabel titleLabel = new JLabel("Gestion des Notes");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        titleLabel.setForeground(TEXT_PRIMARY);
+
+        JLabel breadcrumbLabel = new JLabel("Dashboard > Gestion des Notes");
+        breadcrumbLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        breadcrumbLabel.setForeground(TEXT_SECONDARY);
+
+        JPanel titlePanel = new JPanel();
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+        titlePanel.setBackground(BACKGROUND_COLOR);
+        titlePanel.add(titleLabel);
+        titlePanel.add(Box.createVerticalStrut(5));
+        titlePanel.add(breadcrumbLabel);
+
+        header.add(titlePanel, BorderLayout.WEST);
+        return header;
+    }
+
+    private JTabbedPane createModernTabbedPane() {
+        JTabbedPane tabbedPane = new JTabbedPane() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(CARD_COLOR);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        tabbedPane.setBackground(CARD_COLOR);
+        tabbedPane.setForeground(TEXT_PRIMARY);
+        tabbedPane.setBorder(new ModernBorder());
+
+        JPanel gradesPanel = createGradesPanel();
+        JPanel statsPanel = createStatisticsPanel();
+
+        tabbedPane.addTab("📝 Gestion des Notes", gradesPanel);
+        tabbedPane.addTab("📊 Statistiques", statsPanel);
+
+        // Add ChangeListener to reload data when "Gestion des Notes" tab is selected
+        tabbedPane.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                if (tabbedPane.getSelectedIndex() == 0) { // "Gestion des Notes" tab
+                    loadData();
+                }
+            }
+        });
+
+        return tabbedPane;
+    }
+
+    private JPanel createGradesPanel() {
+        JPanel gradesPanel = new JPanel(new BorderLayout());
+        gradesPanel.setBackground(CARD_COLOR);
+        gradesPanel.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
+
+        JPanel header = createGradesHeader();
+        gradesPanel.add(header, BorderLayout.NORTH);
+
+        JPanel tablePanel = createGradesTable();
+        gradesPanel.add(tablePanel, BorderLayout.CENTER);
+
+        return gradesPanel;
+    }
+
+    private JPanel createGradesHeader() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(CARD_COLOR);
+        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+
+        // Filter panel
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        filterPanel.setBackground(CARD_COLOR);
+
+        JLabel studentLabel = new JLabel("Étudiant:");
+        studentLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        studentLabel.setForeground(TEXT_PRIMARY);
+
+        studentComboBox = ModernComponents.createModernComboBox();
+        studentComboBox.setPreferredSize(new Dimension(250, 40));
+        studentComboBox.addActionListener(e -> loadGrades());
+
+        filterPanel.add(studentLabel);
+        filterPanel.add(studentComboBox);
+
+        // Action panel
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        actionPanel.setBackground(CARD_COLOR);
+
+        JButton addButton = ModernComponents.createPrimaryButton("➕ Ajouter une Note");
+        addButton.addActionListener(e -> showGradeFormDialog(null));
+
+        actionPanel.add(addButton);
+
+        header.add(filterPanel, BorderLayout.WEST);
+        header.add(actionPanel, BorderLayout.EAST);
+
+        return header;
+    }
+
+    private JPanel createGradesTable() {
+        JPanel tablePanel = new JPanel(new BorderLayout());
+        tablePanel.setBackground(CARD_COLOR);
+
+        String[] columns = { "Matière", "Coefficient", "Note /20", "Semestre", "Année", "Actions" };
+        gradesTableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 5;
+            }
+        };
+
+        gradesTable = ModernComponents.createModernTable(gradesTableModel);
+        gradesTable.getColumn("Actions").setCellRenderer(new ModernActionButtonRenderer());
+        gradesTable.getColumn("Actions")
+                .setCellEditor(new ModernActionButtonEditor(this::editGrade, this::deleteGrade));
+
+        JScrollPane scrollPane = ModernComponents.createModernScrollPane(gradesTable);
+        tablePanel.add(scrollPane, BorderLayout.CENTER);
+
+        return tablePanel;
+    }
+
+    private JPanel createStatisticsPanel() {
+        JPanel statsPanel = new JPanel(new BorderLayout());
+        statsPanel.setBackground(CARD_COLOR);
+        statsPanel.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
+
+        JPanel filterPanel = createStatsFilterPanel();
+        statsPanel.add(filterPanel, BorderLayout.NORTH);
+
+        JTabbedPane statsTabbedPane = createStatsTabbedPane();
+        statsPanel.add(statsTabbedPane, BorderLayout.CENTER);
+
+        return statsPanel;
+    }
+
+    private JPanel createStatsFilterPanel() {
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        filterPanel.setBackground(CARD_COLOR);
+        filterPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+
+        JLabel semestreLabel = new JLabel("Semestre:");
+        semestreLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        semestreLabel.setForeground(TEXT_PRIMARY);
+
+        semestreComboBox = ModernComponents.createModernComboBox();
+        semestreComboBox.addItem("");
+        semestreComboBox.addItem("S1");
+        semestreComboBox.addItem("S2");
+
+        JLabel anneeLabel = new JLabel("Année:");
+        anneeLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        anneeLabel.setForeground(TEXT_PRIMARY);
+
+        anneeComboBox = ModernComponents.createModernComboBox();
+        anneeComboBox.addItem("");
+        anneeComboBox.addItem("2023-2024");
+        anneeComboBox.addItem("2024-2025");
+        anneeComboBox.addItem("2025-2026");
+
+        JButton loadStatsButton = ModernComponents.createSecondaryButton("🔄 Charger les Statistiques");
+        loadStatsButton.addActionListener(e -> loadStatistics());
+
+        filterPanel.add(semestreLabel);
+        filterPanel.add(semestreComboBox);
+        filterPanel.add(Box.createHorizontalStrut(20));
+        filterPanel.add(anneeLabel);
+        filterPanel.add(anneeComboBox);
+        filterPanel.add(Box.createHorizontalStrut(20));
+        filterPanel.add(loadStatsButton);
+
+        return filterPanel;
+    }
+
+    private JTabbedPane createStatsTabbedPane() {
+        JTabbedPane statsTabbedPane = new JTabbedPane();
+        statsTabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        statsTabbedPane.setBackground(CARD_COLOR);
+
+        JPanel averagesPanel = createAveragesPanel();
+        JPanel classStatsPanel = createClassStatsPanel();
+
+        statsTabbedPane.addTab("📈 Moyennes Étudiants", averagesPanel);
+        statsTabbedPane.addTab("📊 Statistiques Classes", classStatsPanel);
+
+        return statsTabbedPane;
+    }
+
+    private JPanel createAveragesPanel() {
+        JPanel averagesPanel = new JPanel(new BorderLayout());
+        averagesPanel.setBackground(CARD_COLOR);
+
+        String[] columns = { "Matricule", "Prénom", "Nom", "Moyenne", "Statut", "Mention" };
+        averagesTableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        averagesTable = ModernComponents.createModernTable(averagesTableModel);
+        JScrollPane scrollPane = ModernComponents.createModernScrollPane(averagesTable);
+        averagesPanel.add(scrollPane, BorderLayout.CENTER);
+
+        return averagesPanel;
+    }
+
+    private JPanel createClassStatsPanel() {
+        JPanel classStatsPanel = new JPanel(new BorderLayout());
+        classStatsPanel.setBackground(CARD_COLOR);
+
+        String[] columns = { "Niveau", "Moyenne Générale", "Moyenne Max", "Moyenne Min", "Détails" };
+        classStatsTableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 4;
+            }
+        };
+
+        classStatsTable = ModernComponents.createModernTable(classStatsTableModel);
+        classStatsTable.getColumn("Détails").setCellRenderer(new ModernDetailsButtonRenderer());
+        classStatsTable.getColumn("Détails").setCellEditor(new ModernDetailsButtonEditor(this::showLevelDetailsDialog));
+
+        JScrollPane scrollPane = ModernComponents.createModernScrollPane(classStatsTable);
+        classStatsPanel.add(scrollPane, BorderLayout.CENTER);
+
+        return classStatsPanel;
+    }
+
+    private void showGradeFormDialog(Note note) {
+        boolean isEdit = note != null;
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
+                isEdit ? "Modifier la Note" : "Ajouter une Note", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(500, 600);
+        dialog.setLocationRelativeTo(this);
+
+        loadData();
+        loadGrades();
+        loadStatistics();
+
+        JPanel mainPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(CARD_COLOR);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        mainPanel.setLayout(new BorderLayout());
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+
+        // Header
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(CARD_COLOR);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+
+        JLabel titleLabel = new JLabel(isEdit ? "✏️ Modifier la Note" : "➕ Ajouter une Note");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        titleLabel.setForeground(TEXT_PRIMARY);
+
+        JLabel subtitleLabel = new JLabel("Veuillez remplir tous les champs requis");
+        subtitleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        subtitleLabel.setForeground(TEXT_SECONDARY);
+
+        JPanel titlePanel = new JPanel();
+        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
+        titlePanel.setBackground(CARD_COLOR);
+        titlePanel.add(titleLabel);
+        titlePanel.add(Box.createVerticalStrut(5));
+        titlePanel.add(subtitleLabel);
+
+        headerPanel.add(titlePanel, BorderLayout.WEST);
+
+        // Form panel
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(CARD_COLOR);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(15, 0, 15, 0);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        // Matière
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        JLabel matiereLabel = createFormLabel("Matière *");
+        formPanel.add(matiereLabel, gbc);
+
+        gbc.gridy = 1;
+        JComboBox<Matiere> matiereComboBox = ModernComponents.createModernComboBox();
+        matiereComboBox.setPreferredSize(new Dimension(400, 45));
+        if (allMatieres != null) {
+            for (Matiere matiere : allMatieres) {
+                matiereComboBox.addItem(matiere);
+            }
+        }
+        if (isEdit && note != null) {
+            for (Matiere matiere : allMatieres) {
+                if (matiere.getId().equals(note.getMatiereId())) {
+                    matiereComboBox.setSelectedItem(matiere);
+                    break;
+                }
+            }
+        }
+        formPanel.add(matiereComboBox, gbc);
+
+        // Note
+        gbc.gridy = 2;
+        JLabel valeurLabel = createFormLabel("Note sur 20 *");
+        formPanel.add(valeurLabel, gbc);
+
+        gbc.gridy = 3;
+        JTextField valeurField = createModernTextField(isEdit && note != null ? String.valueOf(note.getValeur()) : "");
+        valeurField.setPreferredSize(new Dimension(400, 45));
+
+        // Validation en temps réel pour la note
+        valeurField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                validateGradeField(valeurField);
+            }
+        });
+
+        formPanel.add(valeurField, gbc);
+
+        // Semestre
+        gbc.gridy = 4;
+        JLabel semestreLabel = createFormLabel("Semestre *");
+        formPanel.add(semestreLabel, gbc);
+
+        gbc.gridy = 5;
+        JComboBox<String> formSemestreComboBox = ModernComponents.createModernComboBox();
+        formSemestreComboBox.addItem("S1");
+        formSemestreComboBox.addItem("S2");
+        formSemestreComboBox.setPreferredSize(new Dimension(400, 45));
+        if (isEdit && note != null) {
+            formSemestreComboBox.setSelectedItem(note.getSemestre());
+        }
+        formPanel.add(formSemestreComboBox, gbc);
+
+        // Année académique
+        gbc.gridy = 6;
+        JLabel anneeLabel = createFormLabel("Année Académique *");
+        formPanel.add(anneeLabel, gbc);
+
+        gbc.gridy = 7;
+        JPanel anneePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        anneePanel.setBackground(CARD_COLOR);
+
+        JTextField startYearField = createModernTextField("");
+        startYearField.setPreferredSize(new Dimension(120, 45));
+        startYearField.setToolTipText("Année de début (ex: 2024)");
+
+        JLabel separatorLabel = new JLabel("-");
+        separatorLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        separatorLabel.setForeground(TEXT_PRIMARY);
+
+        JTextField endYearField = createModernTextField("");
+        endYearField.setPreferredSize(new Dimension(120, 45));
+        endYearField.setToolTipText("Année de fin (ex: 2025)");
+
+        // Validation en temps réel pour les années
+        startYearField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                validateYearField(startYearField);
+                if (startYearField.getText().length() == 4) {
+                    try {
+                        int startYear = Integer.parseInt(startYearField.getText());
+                        endYearField.setText(String.valueOf(startYear + 1));
+                    } catch (NumberFormatException ex) {
+                        // Ignore
+                    }
+                }
+            }
+        });
+
+        endYearField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                validateYearField(endYearField);
+            }
+        });
+
+        if (isEdit && note != null && note.getAnnee() != null && note.getAnnee().matches("\\d{4}-\\d{4}")) {
+            String[] years = note.getAnnee().split("-");
+            startYearField.setText(years[0]);
+            endYearField.setText(years[1]);
+        }
+
+        anneePanel.add(startYearField);
+        anneePanel.add(separatorLabel);
+        anneePanel.add(endYearField);
+        formPanel.add(anneePanel, gbc);
+
+        // Buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
+        buttonPanel.setBackground(CARD_COLOR);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
+
+        JButton saveButton = ModernComponents.createPrimaryButton("💾 Enregistrer");
+        JButton cancelButton = ModernComponents.createSecondaryButton("❌ Annuler");
+
+        saveButton.addActionListener(e -> {
+            if (validateAndSaveGrade(dialog, matiereComboBox, valeurField, formSemestreComboBox,
+                    startYearField, endYearField, note, isEdit)) {
+                dialog.dispose();
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        mainPanel.add(formPanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
+    }
+
+    private boolean validateAndSaveGrade(JDialog dialog, JComboBox<Matiere> matiereComboBox,
+            JTextField valeurField, JComboBox<String> semestreComboBox,
+            JTextField startYearField, JTextField endYearField, Note note, boolean isEdit) {
+
+        try {
+            // Validation des champs requis
+            String valeurText = valeurField.getText().trim();
+            String startYearText = startYearField.getText().trim();
+            String endYearText = endYearField.getText().trim();
+
+            if (valeurText.isEmpty() || startYearText.isEmpty() || endYearText.isEmpty()) {
+                showErrorDialog(dialog, "Tous les champs marqués d'un * sont obligatoires.");
+                return false;
+            }
+
+            // Validation de la note (0-20)
+            float valeur;
+            try {
+                valeur = Float.parseFloat(valeurText);
+                if (valeur < 0 || valeur > 20) {
+                    showErrorDialog(dialog, "La note doit être comprise entre 0 et 20.");
+                    valeurField.requestFocus();
+                    return false;
+                }
+            } catch (NumberFormatException ex) {
+                showErrorDialog(dialog, "Veuillez saisir une note valide (nombre décimal).");
+                valeurField.requestFocus();
+                return false;
+            }
+
+            // Validation des années (4 chiffres)
+            if (!Pattern.matches("\\d{4}", startYearText)) {
+                showErrorDialog(dialog, "L'année de début doit contenir exactement 4 chiffres.");
+                startYearField.requestFocus();
+                return false;
+            }
+
+            if (!Pattern.matches("\\d{4}", endYearText)) {
+                showErrorDialog(dialog, "L'année de fin doit contenir exactement 4 chiffres.");
+                endYearField.requestFocus();
+                return false;
+            }
+
+            int startYear = Integer.parseInt(startYearText);
+            int endYear = Integer.parseInt(endYearText);
+
+            if (endYear != startYear + 1) {
+                showErrorDialog(dialog, "L'année de fin doit être l'année suivant l'année de début (ex: 2024-2025).");
+                endYearField.requestFocus();
+                return false;
+            }
+
+            // Validation de la sélection
+            Etudiant selectedStudent = (Etudiant) studentComboBox.getSelectedItem();
+            Matiere selectedMatiere = (Matiere) matiereComboBox.getSelectedItem();
+
+            if (selectedStudent == null || selectedMatiere == null) {
+                showErrorDialog(dialog, "Veuillez sélectionner un étudiant et une matière.");
+                return false;
+            }
+
+            // Création/modification de la note
+            Note newNote = new Note();
+            newNote.setEtudiantId(selectedStudent.getId());
+            newNote.setMatiereId(selectedMatiere.getId());
+            newNote.setValeur(valeur);
+            newNote.setSemestre((String) semestreComboBox.getSelectedItem());
+            newNote.setAnnee(startYearText + "-" + endYearText);
+
+            if (isEdit && note != null) {
+                newNote.setId(note.getId());
+                studentService.updateNote(note.getId(), newNote);
+                showSuccessNotification("Note modifiée avec succès!");
+            } else {
+                studentService.addNote(newNote);
+                showSuccessNotification("Note ajoutée avec succès!");
+            }
+
+            loadGrades();
+            return true;
+
+        } catch (ApiException ex) {
+            showErrorDialog(dialog, "Erreur lors de l'enregistrement: " + ex.getMessage());
+            return false;
+        }
+    }
+
+    private void validateGradeField(JTextField field) {
+        String text = field.getText().trim();
+        if (!text.isEmpty()) {
+            try {
+                float value = Float.parseFloat(text);
+                if (value < 0 || value > 20) {
+                    field.setBorder(BorderFactory.createCompoundBorder(
+                            new ModernBorder(ERROR_COLOR),
+                            BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+                    field.setToolTipText("La note doit être entre 0 et 20");
+                } else {
+                    field.setBorder(BorderFactory.createCompoundBorder(
+                            new ModernBorder(SUCCESS_COLOR),
+                            BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+                    field.setToolTipText("Note valide");
+                }
+            } catch (NumberFormatException e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(ERROR_COLOR),
+                        BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+                field.setToolTipText("Veuillez saisir un nombre valide");
+            }
+        } else {
+            field.setBorder(BorderFactory.createCompoundBorder(
+                    new ModernBorder(BORDER_COLOR),
+                    BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+            field.setToolTipText("");
+        }
+    }
+
+    private void validateYearField(JTextField field) {
+        String text = field.getText().trim();
+        if (!text.isEmpty()) {
+            if (Pattern.matches("\\d{4}", text)) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(SUCCESS_COLOR),
+                        BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+                field.setToolTipText("Année valide");
+            } else {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(ERROR_COLOR),
+                        BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+                field.setToolTipText("L'année doit contenir exactement 4 chiffres");
+            }
+        } else {
+            field.setBorder(BorderFactory.createCompoundBorder(
+                    new ModernBorder(BORDER_COLOR),
+                    BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+            field.setToolTipText("");
+        }
+    }
+
+    private JLabel createFormLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        label.setForeground(TEXT_PRIMARY);
+        return label;
+    }
+
+    private JTextField createModernTextField(String text) {
+        JTextField field = new JTextField(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(getBackground());
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setBackground(new Color(248, 250, 252));
+        field.setForeground(TEXT_PRIMARY);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(PRIMARY_COLOR),
+                        BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new ModernBorder(BORDER_COLOR),
+                        BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+            }
+        });
+
+        return field;
+    }
+
+    private void showErrorDialog(Component parent, String message) {
+        JOptionPane.showMessageDialog(parent, message, "❌ Erreur de Validation", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void showSuccessNotification(String message) {
+        // Create a modern toast notification
+        JWindow toast = new JWindow();
+        toast.setAlwaysOnTop(true);
+
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(new Color(0, 0, 0, 100));
+                g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
+                g2d.setColor(SUCCESS_COLOR);
+                g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+                g2d.dispose();
+            }
+        };
+
+        panel.setLayout(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+
+        JLabel messageLabel = new JLabel("✅ " + message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+
+        panel.add(messageLabel, BorderLayout.CENTER);
+        toast.add(panel);
+        toast.pack();
+
+        // Position at top-right of screen
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toast.setLocation(screenSize.width - toast.getWidth() - 30, 30);
+
+        toast.setVisible(true);
+
+        // Auto-hide after 3 seconds
+        Timer timer = new Timer(3000, e -> {
+            toast.setVisible(false);
+            toast.dispose();
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
+    // Data loading methods
+    private void loadData() {
+        try {
+            allStudents = studentService.getAllEtudiants(mainWindow.getCurrentResponsable().getId());
+            allMatieres = studentService.getAllMatieres();
+            allNiveaux = studentService.getAllNiveaux();
+
+            studentComboBox.removeAllItems();
+            for (Etudiant student : allStudents) {
+                studentComboBox.addItem(student);
+            }
+
+            if (!allStudents.isEmpty()) {
+                studentComboBox.setSelectedIndex(0);
+                loadGrades();
+            }
+        } catch (ApiException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void loadGrades() {
+        Etudiant selectedStudent = (Etudiant) studentComboBox.getSelectedItem();
+        if (selectedStudent == null)
+            return;
+
+        try {
+            List<Note> notes = studentService.getNotesByEtudiant(selectedStudent.getId());
+            gradesTableModel.setRowCount(0);
+
+            for (Note note : notes) {
+                Matiere matiere = getMatiereById(note.getMatiereId());
+                gradesTableModel.addRow(new Object[] {
+                        matiere != null ? matiere.getNom() : note.getMatiereId(),
+                        matiere != null ? matiere.getCoefficient() : "N/A",
+                        String.format("%.1f", note.getValeur()),
+                        note.getSemestre(),
+                        note.getAnnee(),
+                        "Actions"
+                });
+            }
+        } catch (ApiException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void loadStatistics() {
+        String semestre = (String) semestreComboBox.getSelectedItem();
+        String annee = (String) anneeComboBox.getSelectedItem();
+        semestre = (semestre == null || semestre.equals("")) ? null : semestre;
+        annee = (annee == null || annee.equals("")) ? null : annee;
+
+        try {
+            // Load student averages
+            List<StudentAverageDTO> averages = studentService.getStudentAverages(semestre, annee);
+            averagesTableModel.setRowCount(0);
+            for (StudentAverageDTO avg : averages) {
+                averagesTableModel.addRow(new Object[] {
+                        avg.getMatricule(),
+                        avg.getPrenom(),
+                        avg.getNom(),
+                        String.format("%.2f", avg.getMoyenne()),
+                        avg.getAdmissionStatus(),
+                        avg.getMention()
+                });
+            }
+
+            // Load class statistics
+            List<ClassStatisticsDTO> statsList = studentService.getAllClassStatistics(semestre, annee);
+            classStatsTableModel.setRowCount(0);
+            for (ClassStatisticsDTO stats : statsList) {
+                classStatsTableModel.addRow(new Object[] {
+                        stats.getNiveauNom(),
+                        String.format("%.2f", stats.getMoyenneGenerale()),
+                        String.format("%.2f", stats.getMaxMoyenne()),
+                        String.format("%.2f", stats.getMinMoyenne()),
+                        stats.getNiveauId()
+                });
+            }
+        } catch (ApiException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private Matiere getMatiereById(String id) {
+        if (allMatieres == null)
+            return null;
+        for (Matiere m : allMatieres) {
+            if (m.getId().equals(id)) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    private void editGrade() {
+        int selectedRow = gradesTable.getSelectedRow();
+        if (selectedRow >= 0) {
+            Etudiant selectedStudent = (Etudiant) studentComboBox.getSelectedItem();
+            if (selectedStudent != null) {
+                try {
+                    List<Note> notes = studentService.getNotesByEtudiant(selectedStudent.getId());
+                    if (selectedRow < notes.size()) {
+                        showGradeFormDialog(notes.get(selectedRow));
+                    }
+                } catch (ApiException ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
+    }
+
+    private void deleteGrade() {
+        int selectedRow = gradesTable.getSelectedRow();
+        if (selectedRow >= 0) {
+            Etudiant selectedStudent = (Etudiant) studentComboBox.getSelectedItem();
+            if (selectedStudent != null) {
+                try {
+                    List<Note> notes = studentService.getNotesByEtudiant(selectedStudent.getId());
+                    if (selectedRow < notes.size()) {
+                        int confirm = JOptionPane.showConfirmDialog(this,
+                                "Êtes-vous sûr de vouloir supprimer cette note ?",
+                                "Confirmer la suppression",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.QUESTION_MESSAGE);
+
+                        if (confirm == JOptionPane.YES_OPTION) {
+                            studentService.deleteNote(notes.get(selectedRow).getId());
+                            loadGrades();
+                            showSuccessNotification("Note supprimée avec succès!");
+                        }
+                    }
+                } catch (ApiException ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
+    }
+
+    private void showLevelDetailsDialog() {
+        int selectedRow = classStatsTable.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(this, "Veuillez sélectionner un niveau.", "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        loadData();
+        loadGrades();
+        loadStatistics();
+
+        String niveauId = (String) classStatsTableModel.getValueAt(selectedRow, 4);
+        String semestre = (String) semestreComboBox.getSelectedItem();
+        String annee = (String) anneeComboBox.getSelectedItem();
+        semestre = (semestre == null || semestre.equals("")) ? null : semestre;
+        annee = (annee == null || annee.equals("")) ? null : annee;
+
+        try {
+            ClassStatisticsDTO stats = studentService.getClassStatistics(niveauId, semestre, annee, 5);
+            showModernDetailsDialog(stats);
+        } catch (ApiException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void showModernDetailsDialog(ClassStatisticsDTO stats) {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
+                "Détails du Niveau: " + stats.getNiveauNom(), true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(900, 700);
+        dialog.setLocationRelativeTo(this);
+
+        loadData();
+        loadGrades();
+        loadStatistics();
+
+        JPanel mainPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(CARD_COLOR);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2d.dispose();
+            }
+        };
+        mainPanel.setLayout(new BorderLayout());
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+
+        // Header with statistics summary
+        JPanel summaryPanel = createStatsSummaryPanel(stats);
+        mainPanel.add(summaryPanel, BorderLayout.NORTH);
+
+        // Student details tabs
+        JTabbedPane studentTabs = createStudentDetailsTabs(stats);
+        mainPanel.add(studentTabs, BorderLayout.CENTER);
+
+        // Close button
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBackground(CARD_COLOR);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+
+        JButton closeButton = ModernComponents.createSecondaryButton("Fermer");
+        closeButton.addActionListener(e -> dialog.dispose());
+        buttonPanel.add(closeButton);
+
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
+    }
+
+    private JPanel createStatsSummaryPanel(ClassStatisticsDTO stats) {
+        JPanel summaryPanel = new JPanel(new GridLayout(2, 2, 20, 15));
+        summaryPanel.setBackground(CARD_COLOR);
+        summaryPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+
+        summaryPanel.add(createStatCard("📚 Niveau", stats.getNiveauNom(), PRIMARY_COLOR));
+        summaryPanel.add(createStatCard("📊 Moyenne Générale", String.format("%.2f", stats.getMoyenneGenerale()),
+                SUCCESS_COLOR));
+        summaryPanel.add(createStatCard("📈 Moyenne Max", String.format("%.2f", stats.getMaxMoyenne()), WARNING_COLOR));
+        summaryPanel.add(createStatCard("📉 Moyenne Min", String.format("%.2f", stats.getMinMoyenne()), ERROR_COLOR));
+
+        return summaryPanel;
+    }
+
+    private JPanel createStatCard(String title, String value, Color accentColor) {
+        JPanel card = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Shadow
+                g2d.setColor(new Color(0, 0, 0, 20));
+                g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
+
+                // Background
+                g2d.setColor(CARD_COLOR);
+                g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+
+                // Accent border
+                g2d.setColor(accentColor);
+                g2d.setStroke(new BasicStroke(3));
+                g2d.drawRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+
+                g2d.dispose();
+            }
+        };
+
+        card.setLayout(new BorderLayout());
+        card.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        titleLabel.setForeground(TEXT_SECONDARY);
+
+        JLabel valueLabel = new JLabel(value);
+        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        valueLabel.setForeground(TEXT_PRIMARY);
+
+        card.add(titleLabel, BorderLayout.NORTH);
+        card.add(valueLabel, BorderLayout.CENTER);
+
+        return card;
+    }
+
+    private JTabbedPane createStudentDetailsTabs(ClassStatisticsDTO stats) {
+        JTabbedPane studentTabs = new JTabbedPane();
+        studentTabs.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        studentTabs.setBackground(CARD_COLOR);
+
+        // Top students tab
+        JPanel topStudentsPanel = createStudentListPanel(stats.getTopStudents(), "🏆 Top 5 Étudiants");
+        studentTabs.addTab("🏆 Top 5", topStudentsPanel);
+
+        // All students tab
+        JPanel allStudentsPanel = createStudentListPanel(stats.getAllStudents(), "👥 Tous les Étudiants");
+        studentTabs.addTab("👥 Tous", allStudentsPanel);
+
+        return studentTabs;
+    }
+
+    private JPanel createStudentListPanel(List<StudentAverageDTO> students, String title) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(CARD_COLOR);
+
+        String[] columns = { "Matricule", "Prénom", "Nom", "Moyenne", "Statut", "Mention" };
+        DefaultTableModel model = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        JTable table = ModernComponents.createModernTable(model);
+
+        for (StudentAverageDTO student : students) {
+            model.addRow(new Object[] {
+                    student.getMatricule(),
+                    student.getPrenom(),
+                    student.getNom(),
+                    String.format("%.2f", student.getMoyenne()),
+                    student.getAdmissionStatus(),
+                    student.getMention()
+            });
+        }
+
+        JScrollPane scrollPane = ModernComponents.createModernScrollPane(table);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    // Custom border class
+    private static class ModernBorder extends AbstractBorder {
+        private final Color color;
+        private final int thickness;
+
+        public ModernBorder() {
+            this(BORDER_COLOR, 1);
+        }
+
+        public ModernBorder(Color color) {
+            this(color, 2);
+        }
+
+        public ModernBorder(Color color, int thickness) {
+            this.color = color;
+            this.thickness = thickness;
+        }
+
+        @Override
+        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setColor(color);
+            g2d.setStroke(new BasicStroke(thickness));
+            g2d.drawRoundRect(x, y, width - 1, height - 1, 8, 8);
+            g2d.dispose();
+        }
+
+        @Override
+        public Insets getBorderInsets(Component c) {
+            return new Insets(thickness, thickness, thickness, thickness);
+        }
+    }
+
+    // Modern button renderers and editors
+    private class ModernActionButtonRenderer extends JPanel implements TableCellRenderer {
+        private JButton editButton;
+        private JButton deleteButton;
+
+        public ModernActionButtonRenderer() {
+            setLayout(new FlowLayout(FlowLayout.CENTER, 8, 5));
+            setOpaque(false);
+
+            editButton = createActionButton("✏️", WARNING_COLOR);
+            deleteButton = createActionButton("🗑️", ERROR_COLOR);
+
+            add(editButton);
+            add(deleteButton);
+        }
+
+        private JButton createActionButton(String text, Color color) {
+            JButton button = new JButton(text) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2d = (Graphics2D) g.create();
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    if (getModel().isPressed()) {
+                        g2d.setColor(color.darker());
+                    } else if (getModel().isRollover()) {
+                        g2d.setColor(color.brighter());
+                    } else {
+                        g2d.setColor(color);
+                    }
+
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+                    g2d.dispose();
+                    super.paintComponent(g);
+                }
+            };
+
+            button.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            button.setForeground(Color.WHITE);
+            button.setContentAreaFilled(false);
+            button.setBorderPainted(false);
+            button.setFocusPainted(false);
+            button.setPreferredSize(new Dimension(32, 28));
+            button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            return button;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+            return this;
+        }
+    }
+
+    private class ModernActionButtonEditor extends DefaultCellEditor {
+        private JPanel panel;
+        private JButton editButton;
+        private JButton deleteButton;
+        private final Runnable editAction;
+        private final Runnable deleteAction;
+
+        public ModernActionButtonEditor(Runnable editAction, Runnable deleteAction) {
+            super(new JTextField());
+            this.editAction = editAction;
+            this.deleteAction = deleteAction;
+
+            panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 5));
+            panel.setOpaque(false);
+
+            editButton = createActionButton("✏️", WARNING_COLOR);
+            deleteButton = createActionButton("🗑️", ERROR_COLOR);
+
+            editButton.addActionListener(e -> {
+                fireEditingStopped();
+                editAction.run();
+            });
+
+            deleteButton.addActionListener(e -> {
+                fireEditingStopped();
+                deleteAction.run();
+            });
+
+            panel.add(editButton);
+            panel.add(deleteButton);
+        }
+
+        private JButton createActionButton(String text, Color color) {
+            JButton button = new JButton(text) {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2d = (Graphics2D) g.create();
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    if (getModel().isPressed()) {
+                        g2d.setColor(color.darker());
+                    } else if (getModel().isRollover()) {
+                        g2d.setColor(color.brighter());
+                    } else {
+                        g2d.setColor(color);
+                    }
+
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+                    g2d.dispose();
+                    super.paintComponent(g);
+                }
+            };
+
+            button.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            button.setForeground(Color.WHITE);
+            button.setContentAreaFilled(false);
+            button.setBorderPainted(false);
+            button.setFocusPainted(false);
+            button.setPreferredSize(new Dimension(32, 28));
+            button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            return button;
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                boolean isSelected, int row, int column) {
+            return panel;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Actions";
+        }
+    }
+
+    private class ModernDetailsButtonRenderer extends JPanel implements TableCellRenderer {
+        private JButton button;
+
+        public ModernDetailsButtonRenderer() {
+            setLayout(new FlowLayout(FlowLayout.CENTER, 0, 5));
+            setOpaque(false);
+
+            button = createDetailsButton();
+            add(button);
+        }
+
+        private JButton createDetailsButton() {
+            JButton button = new JButton("📋 Détails") {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2d = (Graphics2D) g.create();
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    if (getModel().isPressed()) {
+                        g2d.setColor(SECONDARY_COLOR.darker());
+                    } else if (getModel().isRollover()) {
+                        g2d.setColor(SECONDARY_COLOR.brighter());
+                    } else {
+                        g2d.setColor(SECONDARY_COLOR);
+                    }
+
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                    g2d.dispose();
+                    super.paintComponent(g);
+                }
+            };
+
+            button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            button.setForeground(Color.WHITE);
+            button.setContentAreaFilled(false);
+            button.setBorderPainted(false);
+            button.setFocusPainted(false);
+            button.setPreferredSize(new Dimension(80, 30));
+            button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            return button;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+            return this;
+        }
+    }
+
+    private class ModernDetailsButtonEditor extends DefaultCellEditor {
+        private JPanel panel;
+        private JButton button;
+        private final Runnable action;
+
+        public ModernDetailsButtonEditor(Runnable action) {
+            super(new JTextField());
+            this.action = action;
+
+            panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 5));
+            panel.setOpaque(false);
+
+            button = createDetailsButton();
+            button.addActionListener(e -> {
+                fireEditingStopped();
+                action.run();
+            });
+
+            panel.add(button);
+        }
+
+        private JButton createDetailsButton() {
+            JButton button = new JButton("📋 Détails") {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    Graphics2D g2d = (Graphics2D) g.create();
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    if (getModel().isPressed()) {
+                        g2d.setColor(SECONDARY_COLOR.darker());
+                    } else if (getModel().isRollover()) {
+                        g2d.setColor(SECONDARY_COLOR.brighter());
+                    } else {
+                        g2d.setColor(SECONDARY_COLOR);
+                    }
+
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+                    g2d.dispose();
+                    super.paintComponent(g);
+                }
+            };
+
+            button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            button.setForeground(Color.WHITE);
+            button.setContentAreaFilled(false);
+            button.setBorderPainted(false);
+            button.setFocusPainted(false);
+            button.setPreferredSize(new Dimension(80, 30));
+            button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            return button;
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                boolean isSelected, int row, int column) {
+            return panel;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Détails";
+        }
+    }
+}
+
+
+
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
+import java.awt.event.*;
+import com.studentmanagement.ui.common.MainWindow;
+import com.studentmanagement.model.ResponsableResponse;
+import com.studentmanagement.service.StudentService;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+// import org.springframework.http.client.ClientHttpRequestInterceptor;
+
+public class LoginFrame extends JPanel {
+    private static final long serialVersionUID = 1L;
+    private JTextField emailField;
+    private JPasswordField passwordField;
+    private MainWindow mainWindow;
+    private final StudentService studentService;
+    private Color primaryColor = new Color(41, 128, 185);
+    private Color secondaryColor = new Color(52, 152, 219);
+    private Color backgroundColor = new Color(236, 240, 241);
+    private static final String LOGIN_API = "http://localhost:8080/api/responsables/login";
+    private static final String PROFILE_API = "http://localhost:8080/api/responsables/me";
+    private RestTemplate restTemplate;
+
+    public LoginFrame(MainWindow mainWindow) {
+        this.mainWindow = mainWindow;
+        this.studentService = new StudentService();
+        setLayout(new BorderLayout());
+        setBackground(backgroundColor);
+
+        // Configure RestTemplate with logging interceptor
+        restTemplate = new RestTemplate();
+        restTemplate.getInterceptors().add((request, body, execution) -> {
+            System.out.println("Request URL: " + request.getURI());
+            System.out.println("Request Method: " + request.getMethod());
+            System.out.println("Request Headers: " + request.getHeaders());
+            return execution.execute(request, body);
+        });
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
+        mainPanel.setBackground(backgroundColor);
+
+        JPanel formPanel = createFormPanel();
+        mainPanel.add(Box.createVerticalGlue());
+        mainPanel.add(formPanel);
+        mainPanel.add(Box.createVerticalGlue());
+
+        add(mainPanel, BorderLayout.CENTER);
+    }
+
+    private JPanel createFormPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                new SoftBevelBorder(BevelBorder.RAISED),
+                BorderFactory.createEmptyBorder(20, 30, 30, 30)));
+
+        JLabel titleLabel = new JLabel("Connexion Responsable");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setForeground(primaryColor);
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(titleLabel);
+        panel.add(Box.createRigidArea(new Dimension(0, 25)));
+
+        panel.add(createFieldPanel("Email", emailField = new JTextField()));
+        panel.add(Box.createRigidArea(new Dimension(0, 15)));
+
+        panel.add(createFieldPanel("Mot de passe", passwordField = new JPasswordField()));
+        panel.add(Box.createRigidArea(new Dimension(0, 30)));
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        buttonPanel.setMaximumSize(new Dimension(350, 40));
+
+        JButton loginButton = createStyledButton("Se connecter", primaryColor);
+        JButton registerButton = createStyledButton("S'inscrire", new Color(52, 73, 94));
+
+        loginButton.addActionListener(_ -> {
+            String email = emailField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            if (email.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!email.matches("^[A-Za-z0-9+_.-]+@.+\\..+$")) {
+                JOptionPane.showMessageDialog(this, "Email invalide.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            try {
+                // Prepare login request
+                LoginRequest request = new LoginRequest();
+                request.setEmail(email);
+                request.setMotDePasse(password);
+
+                // Set headers for login request
+                HttpHeaders loginHeaders = new HttpHeaders();
+                loginHeaders.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<LoginRequest> loginEntity = new HttpEntity<>(request, loginHeaders);
+
+                // Perform login request
+                LoginResponse loginResponse = restTemplate.postForObject(LOGIN_API, loginEntity, LoginResponse.class);
+                if (loginResponse != null && loginResponse.getToken() != null) {
+                    studentService.setJwtToken(loginResponse.getToken());
+
+                    // Prepare profile request with Authorization header
+                    HttpHeaders profileHeaders = new HttpHeaders();
+                    profileHeaders.set("Authorization", "Bearer " + loginResponse.getToken());
+                    HttpEntity<Void> profileEntity = new HttpEntity<>(profileHeaders);
+
+                    // Perform profile request
+                    ResponsableResponse profile = restTemplate.exchange(PROFILE_API, HttpMethod.GET, profileEntity, ResponsableResponse.class).getBody();
+                    if (profile != null) {
+                        profile.setToken(loginResponse.getToken());
+                        mainWindow.setCurrentResponsable(profile);
+                        mainWindow.showPanel("Dashboard");
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Impossible de récupérer le profil.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(this, "Email ou mot de passe incorrect.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (HttpClientErrorException ex) {
+                JOptionPane.showMessageDialog(this, "Email ou mot de passe incorrect: " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Erreur lors de la connexion : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        registerButton.addActionListener(_ -> mainWindow.showPanel("Register"));
+
+        buttonPanel.add(loginButton);
+        buttonPanel.add(Box.createRigidArea(new Dimension(15, 0)));
+        buttonPanel.add(registerButton);
+
+        panel.add(buttonPanel);
+        return panel;
+    }
+
+    private JPanel createFieldPanel(String labelText, JTextField field) {
+        JPanel fieldPanel = new JPanel();
+        fieldPanel.setLayout(new BoxLayout(fieldPanel, BoxLayout.Y_AXIS));
+        fieldPanel.setBackground(Color.WHITE);
+        fieldPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        fieldPanel.setMaximumSize(new Dimension(350, 70));
+
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        label.setForeground(new Color(100, 100, 100));
+
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        field.setPreferredSize(new Dimension(300, 30));
+        field.setMaximumSize(new Dimension(350, 30));
+
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 2, 0, secondaryColor),
+                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
+                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+            }
+        });
+
+        fieldPanel.add(label);
+        fieldPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        fieldPanel.add(field);
+        return fieldPanel;
+    }
+
+    private JButton createStyledButton(String text, Color bgColor) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        button.setForeground(Color.WHITE);
+        button.setBackground(bgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(true);
+        button.setOpaque(true);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setMaximumSize(new Dimension(150, 40));
+        button.setPreferredSize(new Dimension(150, 40));
+        return button;
+    }
+
+    // Make LoginRequest a static inner class
+    static class LoginRequest {
+        private String email;
+        private String motDePasse;
+
+        // No-args constructor for Jackson
+        public LoginRequest() {}
+
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getMotDePasse() { return motDePasse; }
+        public void setMotDePasse(String motDePasse) { this.motDePasse = motDePasse; }
+    }
+
+    // Make LoginResponse a static inner class
+    static class LoginResponse {
+        private String token;
+        private String tokenType;
+        private long expiresIn;
+
+        // No-args constructor for Jackson
+        public LoginResponse() {}
+
+        // Constructor for convenience
+        public LoginResponse(String token, String tokenType, long expiresIn) {
+            this.token = token;
+            this.tokenType = tokenType;
+            this.expiresIn = expiresIn;
+        }
+
+        public String getToken() { return token; }
+        public void setToken(String token) { this.token = token; }
+        public String getTokenType() { return tokenType; }
+        public void setTokenType(String tokenType) { this.tokenType = tokenType; }
+        public long getExpiresIn() { return expiresIn; }
+        public void setExpiresIn(long expiresIn) { this.expiresIn = expiresIn; }
+    }
+}
+
+package com.studentmanagement.ui.auth;
+
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
+import java.awt.event.*;
+import com.studentmanagement.ui.common.MainWindow;
+import com.studentmanagement.model.ResponsableResponse;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+
+public class RegisterFrame extends JPanel {
+    private static final long serialVersionUID = 1L;
+    private JTextField prenomField, nomField, emailField;
+    private JPasswordField passwordField, confirmPasswordField;
+    private MainWindow mainWindow;
+    private Color primaryColor = new Color(41, 128, 185);
+    private Color secondaryColor = new Color(52, 152, 219);
+    private Color backgroundColor = new Color(236, 240, 241);
+    private static final String REGISTER_API = "http://localhost:8080/api/responsables/register";
+    private RestTemplate restTemplate = new RestTemplate();
+
+    public RegisterFrame(MainWindow mainWindow) {
+        this.mainWindow = mainWindow;
+        setLayout(new BorderLayout());
+        setBackground(backgroundColor);
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 50, 30, 50));
+        mainPanel.setBackground(backgroundColor);
+
+        JPanel formPanel = createFormPanel();
+        mainPanel.add(Box.createVerticalGlue());
+        mainPanel.add(formPanel);
+        mainPanel.add(Box.createVerticalGlue());
+
+        add(mainPanel, BorderLayout.CENTER);
+    }
+
+    private JPanel createFormPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                new SoftBevelBorder(BevelBorder.RAISED),
+                BorderFactory.createEmptyBorder(20, 30, 30, 30)));
+
+        JLabel titleLabel = new JLabel("Inscription Responsable");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        titleLabel.setForeground(primaryColor);
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(titleLabel);
+        panel.add(Box.createRigidArea(new Dimension(0, 25)));
+
+        panel.add(createFieldPanel("Prénom", prenomField = new JTextField()));
+        panel.add(Box.createRigidArea(new Dimension(0, 15)));
+        panel.add(createFieldPanel("Nom", nomField = new JTextField()));
+        panel.add(Box.createRigidArea(new Dimension(0, 15)));
+        panel.add(createFieldPanel("Email", emailField = new JTextField()));
+        panel.add(Box.createRigidArea(new Dimension(0, 15)));
+        panel.add(createFieldPanel("Mot de passe", passwordField = new JPasswordField()));
+        panel.add(Box.createRigidArea(new Dimension(0, 15)));
+        panel.add(createFieldPanel("Confirmer le mot de passe", confirmPasswordField = new JPasswordField()));
+        panel.add(Box.createRigidArea(new Dimension(0, 30)));
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.X_AXIS));
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        buttonPanel.setMaximumSize(new Dimension(350, 40));
+
+        JButton registerButton = createStyledButton("S'inscrire", primaryColor);
+        JButton backButton = createStyledButton("Retour", new Color(52, 73, 94));
+
+        registerButton.addActionListener(_ -> {
+            String prenom = prenomField.getText().trim();
+            String nom = nomField.getText().trim();
+            String email = emailField.getText().trim();
+            String password = new String(passwordField.getPassword());
+            String confirmPassword = new String(confirmPasswordField.getPassword());
+
+            if (prenom.isEmpty() || nom.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.", "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!email.matches("^[A-Za-z0-9+_.-]+@.+\\..+$")) {
+                JOptionPane.showMessageDialog(this, "Email invalide.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!password.equals(confirmPassword)) {
+                JOptionPane.showMessageDialog(this, "Les mots de passe ne correspondent pas.", "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (password.length() < 6) {
+                JOptionPane.showMessageDialog(this, "Le mot de passe doit contenir au moins 6 caractères.", "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            try {
+                ResponsableRequest request = new ResponsableRequest();
+                request.setPrenom(prenom);
+                request.setNom(nom);
+                request.setEmail(email);
+                request.setMotDePasse(password);
+                ResponsableResponse response = restTemplate.postForObject(REGISTER_API, request,
+                        ResponsableResponse.class);
+                if (response != null) {
+                    mainWindow.showPanel("Login");
+                    JOptionPane.showMessageDialog(this, "Inscription réussie ! Veuillez vous connecter.");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Erreur lors de l'inscription.", "Erreur",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (HttpClientErrorException ex) {
+                JOptionPane.showMessageDialog(this, "Cet email est déjà utilisé.", "Erreur", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Erreur lors de l'inscription : " + ex.getMessage(), "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        backButton.addActionListener(_ -> mainWindow.showPanel("Login"));
+
+        buttonPanel.add(registerButton);
+        buttonPanel.add(Box.createRigidArea(new Dimension(15, 0)));
+        buttonPanel.add(backButton);
+
+        panel.add(buttonPanel);
+        return panel;
+    }
+
+    private JPanel createFieldPanel(String labelText, JTextField field) {
+        JPanel fieldPanel = new JPanel();
+        fieldPanel.setLayout(new BoxLayout(fieldPanel, BoxLayout.Y_AXIS));
+        fieldPanel.setBackground(Color.WHITE);
+        fieldPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        fieldPanel.setMaximumSize(new Dimension(350, 70));
+
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        label.setForeground(new Color(100, 100, 100));
+
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        field.setPreferredSize(new Dimension(300, 30));
+        field.setMaximumSize(new Dimension(350, 30));
+
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 2, 0, secondaryColor),
+                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 2, 0, primaryColor),
+                        BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+            }
+        });
+
+        fieldPanel.add(label);
+        fieldPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        fieldPanel.add(field);
+        return fieldPanel;
+    }
+
+    private JButton createStyledButton(String text, Color bgColor) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        button.setForeground(Color.WHITE);
+        button.setBackground(bgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(true);
+        button.setOpaque(true);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setMaximumSize(new Dimension(150, 40));
+        button.setPreferredSize(new Dimension(150, 40));
+        return button;
+    }
+
+    class ResponsableRequest {
+        private String prenom;
+        private String nom;
+        private String email;
+        private String motDePasse;
+
+        public String getPrenom() {
+            return prenom;
+        }
+
+        public void setPrenom(String prenom) {
+            this.prenom = prenom;
+        }
+
+        public String getNom() {
+            return nom;
+        }
+
+        public void setNom(String nom) {
+            this.nom = nom;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getMotDePasse() {
+            return motDePasse;
+        }
+
+        public void setMotDePasse(String motDePasse) {
+            this.motDePasse = motDePasse;
+        }
+    }
+}
