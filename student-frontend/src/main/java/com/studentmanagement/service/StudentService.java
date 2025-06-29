@@ -42,11 +42,10 @@ public class StudentService {
         try {
             HttpEntity<?> request = new HttpEntity<>(createHeaders());
             ResponseEntity<Etudiant[]> response = restTemplate.exchange(
-                ETUDIANTS_API,
-                HttpMethod.GET,
-                request,
-                Etudiant[].class
-            );
+                    ETUDIANTS_API,
+                    HttpMethod.GET,
+                    request,
+                    Etudiant[].class);
             return Arrays.asList(response.getBody() != null ? response.getBody() : new Etudiant[0]);
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
@@ -65,11 +64,10 @@ public class StudentService {
         try {
             HttpEntity<?> request = new HttpEntity<>(createHeaders());
             ResponseEntity<Niveau[]> response = restTemplate.exchange(
-                NIVEAUX_API,
-                HttpMethod.GET,
-                request,
-                Niveau[].class
-            );
+                    NIVEAUX_API,
+                    HttpMethod.GET,
+                    request,
+                    Niveau[].class);
             return Arrays.asList(response.getBody() != null ? response.getBody() : new Niveau[0]);
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
@@ -85,11 +83,10 @@ public class StudentService {
         try {
             HttpEntity<?> request = new HttpEntity<>(createHeaders());
             ResponseEntity<Parcours[]> response = restTemplate.exchange(
-                PARCOURS_API,
-                HttpMethod.GET,
-                request,
-                Parcours[].class
-            );
+                    PARCOURS_API,
+                    HttpMethod.GET,
+                    request,
+                    Parcours[].class);
             return Arrays.asList(response.getBody() != null ? response.getBody() : new Parcours[0]);
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
@@ -108,11 +105,10 @@ public class StudentService {
         try {
             HttpEntity<?> request = new HttpEntity<>(createHeaders());
             ResponseEntity<Mention[]> response = restTemplate.exchange(
-                MENTIONS_API,
-                HttpMethod.GET,
-                request,
-                Mention[].class
-            );
+                    MENTIONS_API,
+                    HttpMethod.GET,
+                    request,
+                    Mention[].class);
             return Arrays.asList(response.getBody() != null ? response.getBody() : new Mention[0]);
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
@@ -128,11 +124,10 @@ public class StudentService {
         try {
             HttpEntity<?> request = new HttpEntity<>(createHeaders());
             ResponseEntity<Matiere[]> response = restTemplate.exchange(
-                MATIERES_API,
-                HttpMethod.GET,
-                request,
-                Matiere[].class
-            );
+                    MATIERES_API,
+                    HttpMethod.GET,
+                    request,
+                    Matiere[].class);
             return Arrays.asList(response.getBody() != null ? response.getBody() : new Matiere[0]);
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
@@ -284,11 +279,10 @@ public class StudentService {
             }
             HttpEntity<?> request = new HttpEntity<>(createHeaders());
             ResponseEntity<Note[]> response = restTemplate.exchange(
-                url.toString(),
-                HttpMethod.GET,
-                request,
-                Note[].class
-            );
+                    url.toString(),
+                    HttpMethod.GET,
+                    request,
+                    Note[].class);
             return Arrays.asList(response.getBody() != null ? response.getBody() : new Note[0]);
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
@@ -307,11 +301,10 @@ public class StudentService {
         try {
             HttpEntity<?> request = new HttpEntity<>(createHeaders());
             ResponseEntity<Note[]> response = restTemplate.exchange(
-                NOTES_API + "/etudiant/" + etudiantId,
-                HttpMethod.GET,
-                request,
-                Note[].class
-            );
+                    NOTES_API + "/etudiant/" + etudiantId,
+                    HttpMethod.GET,
+                    request,
+                    Note[].class);
             return Arrays.asList(response.getBody() != null ? response.getBody() : new Note[0]);
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
@@ -437,11 +430,10 @@ public class StudentService {
             }
             HttpEntity<?> request = new HttpEntity<>(createHeaders());
             ResponseEntity<StudentAverageDTO[]> response = restTemplate.exchange(
-                url.toString(),
-                HttpMethod.GET,
-                request,
-                StudentAverageDTO[].class
-            );
+                    url.toString(),
+                    HttpMethod.GET,
+                    request,
+                    StudentAverageDTO[].class);
             return Arrays.asList(response.getBody() != null ? response.getBody() : new StudentAverageDTO[0]);
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
@@ -466,13 +458,13 @@ public class StudentService {
             if (annee != null) {
                 url.append("&annee=").append(annee);
             }
+            System.out.println(url);
             HttpEntity<?> request = new HttpEntity<>(createHeaders());
             ResponseEntity<ClassStatisticsDTO> response = restTemplate.exchange(
-                url.toString(),
-                HttpMethod.GET,
-                request,
-                ClassStatisticsDTO.class
-            );
+                    url.toString(),
+                    HttpMethod.GET,
+                    request,
+                    ClassStatisticsDTO.class);
             return response.getBody();
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
@@ -480,6 +472,7 @@ public class StudentService {
             } else if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
                 throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
             } else {
+                System.out.println(ex.getMessage() + " " + ex.getResponseBodyAsString());
                 throw new ApiException("Erreur lors du chargement des statistiques.", ex);
             }
         } catch (Exception ex) {
