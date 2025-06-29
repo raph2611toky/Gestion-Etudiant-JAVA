@@ -13,9 +13,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
-
 import com.studentmanagement.model.Etudiant;
 import com.studentmanagement.model.Niveau;
 import com.studentmanagement.model.Parcours;
@@ -25,11 +23,10 @@ import com.studentmanagement.service.ApiException;
 import com.studentmanagement.service.StudentService;
 import com.studentmanagement.ui.common.MainWindow;
 import com.studentmanagement.ui.common.SidebarUtil;
+// import com.studentmanagement.ui.common.ModernComponents;
 
 public class StudentManagementFrame extends JPanel {
     private static final long serialVersionUID = 1L;
-    
-    // Champs du formulaire
     private JTextField matriculeField, firstNameField, lastNameField, emailField, adresseField, niveauClasseField;
     private JComboBox<Niveau> niveauComboBox;
     private JComboBox<Parcours> parcoursComboBox;
@@ -50,12 +47,11 @@ public class StudentManagementFrame extends JPanel {
     private List<Niveau> allNiveaux = new ArrayList<>();
     private List<Parcours> allParcours = new ArrayList<>();
 
-    // Palette de couleurs modernes améliorée
-    private static final Color PRIMARY_COLOR = new Color(79, 70, 229);
-    private static final Color PRIMARY_HOVER = new Color(67, 56, 202);
+    // Modern Color Palette
+    private static final Color PRIMARY_COLOR = new Color(99, 102, 241);
     private static final Color SECONDARY_COLOR = new Color(139, 92, 246);
-    private static final Color SUCCESS_COLOR = new Color(16, 185, 129);
-    private static final Color WARNING_COLOR = new Color(245, 158, 11);
+    private static final Color SUCCESS_COLOR = new Color(34, 197, 94);
+    private static final Color WARNING_COLOR = new Color(251, 146, 60);
     private static final Color ERROR_COLOR = new Color(239, 68, 68);
     private static final Color BACKGROUND_COLOR = new Color(248, 250, 252);
     private static final Color CARD_COLOR = Color.WHITE;
@@ -64,33 +60,46 @@ public class StudentManagementFrame extends JPanel {
     private static final Color BORDER_COLOR = new Color(226, 232, 240);
     private static final Color HOVER_COLOR = new Color(241, 245, 249);
     private static final Color NOTES_COLOR = new Color(59, 130, 246);
-    private static final Color SHADOW_COLOR = new Color(0, 0, 0, 10);
 
     public StudentManagementFrame(MainWindow mainWindow) {
         this.mainWindow = mainWindow;
         this.studentService = new StudentService();
-        this.responsableId = mainWindow.getCurrentResponsable() != null ? 
-            mainWindow.getCurrentResponsable().getId() : null;
-        
+        this.responsableId = mainWindow.getCurrentResponsable() != null ? mainWindow.getCurrentResponsable().getId() : null;
         if (this.responsableId != null) {
             this.studentService.setJwtToken(mainWindow.getCurrentResponsable().getToken());
         } else {
             showErrorNotification("Erreur: Responsable non identifié.");
         }
 
+        // Register Noto Emoji font
+        try {
+            InputStream fontStream = getClass().getResourceAsStream("/fonts/NotoEmoji-Regular.ttf");
+            if (fontStream != null) {
+                Font notoEmoji = Font.createFont(Font.TRUETYPE_FONT, fontStream);
+                GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+                ge.registerFont(notoEmoji);
+                fontStream.close();
+            } else {
+                System.err.println("Font file NotoEmoji-Regular.ttf not found in resources.");
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur lors du chargement de la police Noto Emoji: " + e.getMessage());
+        }
+
         initializeUI();
         loadNiveauxAndParcours();
-        
-        addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentShown(ComponentEvent e) {
-                loadStudents();
-            }
-        });
+        loadStudents();
     }
 
-    private Font getModernFont(int style, int size) {
-        return new Font("Segoe UI", style, size);
+    private Font getEmojiSupportedFont(int style, int size) {
+        String[] preferredFonts = {"Noto Emoji", "Segoe UI Emoji", "Noto Sans", "SansSerif"};
+        for (String fontName : preferredFonts) {
+            if (Arrays.stream(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames())
+                    .anyMatch(name -> name.equals(fontName))) {
+                return new Font(fontName, style, size);
+            }
+        }
+        return new Font("SansSerif", style, size);
     }
 
     private void initializeUI() {
@@ -138,7 +147,6 @@ public class StudentManagementFrame extends JPanel {
 
         JPanel contentPanel = createContentPanel();
         mainContent.add(contentPanel, BorderLayout.CENTER);
-
         return mainContent;
     }
 
@@ -151,13 +159,12 @@ public class StudentManagementFrame extends JPanel {
         titleSection.setLayout(new BoxLayout(titleSection, BoxLayout.Y_AXIS));
         titleSection.setBackground(BACKGROUND_COLOR);
 
-        JLabel titleLabel = new JLabel("Gestion des Étudiants");
-        titleLabel.setFont(getModernFont(Font.BOLD, 32));
+        JLabel titleLabel = new JLabel("🎓 Gestion des Étudiants");
+        titleLabel.setFont(getEmojiSupportedFont(Font.BOLD, 32));
         titleLabel.setForeground(TEXT_PRIMARY);
-        titleLabel.setIcon(createVectorIcon(IconType.GRADUATION, 32, PRIMARY_COLOR));
 
         JLabel breadcrumbLabel = new JLabel("Dashboard > Gestion des Étudiants");
-        breadcrumbLabel.setFont(getModernFont(Font.PLAIN, 14));
+        breadcrumbLabel.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         breadcrumbLabel.setForeground(TEXT_SECONDARY);
 
         titleSection.add(titleLabel);
@@ -165,7 +172,6 @@ public class StudentManagementFrame extends JPanel {
         titleSection.add(breadcrumbLabel);
 
         JPanel controlsSection = createControlsSection();
-
         headerSection.add(titleSection, BorderLayout.WEST);
         headerSection.add(controlsSection, BorderLayout.EAST);
 
@@ -195,18 +201,22 @@ public class StudentManagementFrame extends JPanel {
         filtersPanel.add(searchField);
 
         niveauFilterComboBox = createEnhancedComboBox("TOUS LES NIVEAUX");
-        for (Niveau niveau : allNiveaux) {
-            if (niveau != null && niveau.getNom() != null) {
-                niveauFilterComboBox.addItem(niveau.getNom());
+        if (allNiveaux != null) {
+            for (Niveau niveau : new ArrayList<>(allNiveaux)) {
+                if (niveau != null && niveau.getNom() != null) {
+                    niveauFilterComboBox.addItem(niveau.getNom());
+                }
             }
         }
         niveauFilterComboBox.addActionListener(_ -> filterStudents());
         filtersPanel.add(niveauFilterComboBox);
 
         parcoursFilterComboBox = createEnhancedComboBox("TOUS LES PARCOURS");
-        for (Parcours parcours : allParcours) {
-            if (parcours != null && parcours.getNom() != null) {
-                parcoursFilterComboBox.addItem(parcours.getNom());
+        if (allParcours != null) {
+            for (Parcours parcours : new ArrayList<>(allParcours)) {
+                if (parcours != null && parcours.getNom() != null) {
+                    parcoursFilterComboBox.addItem(parcours.getNom());
+                }
             }
         }
         parcoursFilterComboBox.addActionListener(_ -> filterStudents());
@@ -216,68 +226,62 @@ public class StudentManagementFrame extends JPanel {
     }
 
     private JTextField createEnhancedSearchField() {
-        JTextField searchField = new JTextField("Rechercher des étudiants...") {
+        JTextField searchField = new JTextField("🔍 Rechercher des étudiants...") {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Ombre
-                g2d.setColor(SHADOW_COLOR);
-                g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 12, 12);
-                
-                // Fond
                 g2d.setColor(getBackground());
-                g2d.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 12, 12);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
                 g2d.dispose();
                 super.paintComponent(g);
             }
         };
 
-        searchField.setFont(getModernFont(Font.PLAIN, 14));
-        searchField.setPreferredSize(new Dimension(300, 42));
+        searchField.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
+        searchField.setPreferredSize(new Dimension(280, 42));
         searchField.setBackground(CARD_COLOR);
         searchField.setForeground(TEXT_SECONDARY);
         searchField.setBorder(BorderFactory.createCompoundBorder(
-            new ModernBorder(BORDER_COLOR),
-            BorderFactory.createEmptyBorder(12, 45, 12, 16)));
-
-        // Ajouter l'icône de recherche
-        JLabel searchIcon = new JLabel(createVectorIcon(IconType.SEARCH, 16, TEXT_SECONDARY));
-        searchIcon.setBounds(15, 13, 16, 16);
-        searchField.add(searchIcon);
-        searchField.setComponentZOrder(searchIcon, 0);
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
 
         searchField.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                if (searchField.getText().equals("Rechercher des étudiants...")) {
+                if (searchField.getText().equals("🔍 Rechercher des étudiants...")) {
                     searchField.setText("");
                     searchField.setForeground(TEXT_PRIMARY);
                 }
                 searchField.setBorder(BorderFactory.createCompoundBorder(
-                    new ModernBorder(PRIMARY_COLOR),
-                    BorderFactory.createEmptyBorder(12, 45, 12, 16)));
-                filterStudents();
+                        new ModernBorder(PRIMARY_COLOR),
+                        BorderFactory.createEmptyBorder(12, 16, 12, 16)));
             }
 
             @Override
             public void focusLost(FocusEvent e) {
                 if (searchField.getText().isEmpty()) {
-                    searchField.setText("Rechercher des étudiants...");
+                    searchField.setText("🔍 Rechercher des étudiants...");
                     searchField.setForeground(TEXT_SECONDARY);
                 }
                 searchField.setBorder(BorderFactory.createCompoundBorder(
-                    new ModernBorder(BORDER_COLOR),
-                    BorderFactory.createEmptyBorder(12, 45, 12, 16)));
-                filterStudents();
+                        new ModernBorder(BORDER_COLOR),
+                        BorderFactory.createEmptyBorder(12, 16, 12, 16)));
             }
         });
 
         searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { filterStudents(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { filterStudents(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { filterStudents(); }
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                filterStudents();
+            }
+
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                filterStudents();
+            }
+
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                filterStudents();
+            }
         });
 
         return searchField;
@@ -289,27 +293,21 @@ public class StudentManagementFrame extends JPanel {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Ombre
-                g2d.setColor(SHADOW_COLOR);
-                g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 12, 12);
-                
-                // Fond
                 g2d.setColor(getBackground());
-                g2d.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 12, 12);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
                 g2d.dispose();
                 super.paintComponent(g);
             }
         };
 
         comboBox.addItem(defaultItem);
-        comboBox.setFont(getModernFont(Font.PLAIN, 14));
+        comboBox.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         comboBox.setPreferredSize(new Dimension(180, 42));
         comboBox.setBackground(CARD_COLOR);
         comboBox.setForeground(TEXT_PRIMARY);
         comboBox.setBorder(BorderFactory.createCompoundBorder(
-            new ModernBorder(BORDER_COLOR),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
 
         return comboBox;
     }
@@ -318,18 +316,13 @@ public class StudentManagementFrame extends JPanel {
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         buttonsPanel.setBackground(BACKGROUND_COLOR);
 
-        JButton viewToggleButton = createModernButton(
-            isTableView ? "Vue Cartes" : "Vue Tableau",
-            isTableView ? IconType.GRID : IconType.TABLE,
-            SECONDARY_COLOR,
-            false);
+        JButton viewToggleButton = createEnhancedButton(
+                isTableView ? "📋 Vue Cartes" : "📊 Vue Tableau",
+                SECONDARY_COLOR,
+                false);
         viewToggleButton.addActionListener(_ -> toggleView(viewToggleButton));
 
-        JButton addButton = createModernButton(
-            "Ajouter Étudiant", 
-            IconType.PLUS, 
-            PRIMARY_COLOR, 
-            true);
+        JButton addButton = createEnhancedButton("➕ Ajouter Étudiant", PRIMARY_COLOR, true);
         addButton.addActionListener(_ -> showStudentFormDialog(null));
 
         buttonsPanel.add(viewToggleButton);
@@ -338,210 +331,45 @@ public class StudentManagementFrame extends JPanel {
         return buttonsPanel;
     }
 
-    private JButton createModernButton(String text, IconType iconType, Color bgColor, boolean isPrimary) {
+    private JButton createEnhancedButton(String text, Color bgColor, boolean isPrimary) {
         JButton button = new JButton(text) {
-            private boolean isHovered = false;
-            private boolean isPressed = false;
-
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
                 Color currentColor;
-                if (isPressed) {
+                if (getModel().isPressed()) {
                     currentColor = bgColor.darker();
-                } else if (isHovered) {
-                    currentColor = isPrimary ? PRIMARY_HOVER : HOVER_COLOR;
+                } else if (getModel().isRollover()) {
+                    currentColor = isPrimary ? bgColor.brighter() : HOVER_COLOR;
                 } else {
                     currentColor = isPrimary ? bgColor : CARD_COLOR;
                 }
 
-                // Ombre
-                if (!isPressed) {
-                    g2d.setColor(new Color(0, 0, 0, 15));
-                    g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 12, 12);
-                }
-
-                // Fond du bouton
                 g2d.setColor(currentColor);
-                g2d.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 12, 12);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
 
-                // Bordure pour les boutons secondaires
                 if (!isPrimary) {
                     g2d.setColor(BORDER_COLOR);
                     g2d.setStroke(new BasicStroke(1));
-                    g2d.drawRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+                    g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
                 }
 
                 g2d.dispose();
                 super.paintComponent(g);
             }
-
-            @Override
-            protected void processMouseEvent(MouseEvent e) {
-                switch (e.getID()) {
-                    case MouseEvent.MOUSE_ENTERED:
-                        isHovered = true;
-                        repaint();
-                        break;
-                    case MouseEvent.MOUSE_EXITED:
-                        isHovered = false;
-                        repaint();
-                        break;
-                    case MouseEvent.MOUSE_PRESSED:
-                        isPressed = true;
-                        repaint();
-                        break;
-                    case MouseEvent.MOUSE_RELEASED:
-                        isPressed = false;
-                        repaint();
-                        break;
-                }
-                super.processMouseEvent(e);
-            }
         };
 
-        button.setFont(getModernFont(Font.BOLD, 14));
+        button.setFont(getEmojiSupportedFont(Font.BOLD, 14));
         button.setForeground(isPrimary ? Color.WHITE : TEXT_PRIMARY);
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
         button.setFocusPainted(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setBorder(BorderFactory.createEmptyBorder(12, 24, 12, 24));
-        
-        // Ajouter l'icône
-        Icon icon = createVectorIcon(iconType, 16, isPrimary ? Color.WHITE : TEXT_PRIMARY);
-        button.setIcon(icon);
-        button.setIconTextGap(8);
 
         return button;
-    }
-
-    // Énumération pour les types d'icônes
-    private enum IconType {
-        PLUS, EDIT, DELETE, REFRESH, NOTES, SEARCH, GRID, TABLE, GRADUATION, USER, EMAIL, LOCATION, BOOK, TARGET, CAMERA, SAVE, CANCEL
-    }
-
-    private Icon createVectorIcon(IconType type, int size, Color color) {
-        return new Icon() {
-            @Override
-            public void paintIcon(Component c, Graphics g, int x, int y) {
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2d.setColor(color);
-                g2d.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                
-                int centerX = x + size / 2;
-                int centerY = y + size / 2;
-                int radius = size / 3;
-                
-                switch (type) {
-                    case PLUS:
-                        g2d.drawLine(centerX, y + 3, centerX, y + size - 3);
-                        g2d.drawLine(x + 3, centerY, x + size - 3, centerY);
-                        break;
-                    case EDIT:
-                        g2d.drawLine(x + 3, y + size - 3, x + size - 6, y + 6);
-                        g2d.drawLine(x + size - 6, y + 6, x + size - 3, y + 3);
-                        g2d.drawLine(x + size - 3, y + 3, x + size - 6, y + 6);
-                        g2d.drawLine(x + 3, y + size - 6, x + 6, y + size - 3);
-                        break;
-                    case DELETE:
-                        g2d.drawRect(x + 4, y + 6, size - 8, size - 8);
-                        g2d.drawLine(x + 6, y + 4, x + size - 6, y + 4);
-                        g2d.drawLine(x + 7, y + 8, x + 7, y + size - 4);
-                        g2d.drawLine(centerX, y + 8, centerX, y + size - 4);
-                        g2d.drawLine(x + size - 7, y + 8, x + size - 7, y + size - 4);
-                        break;
-                    case REFRESH:
-                        g2d.drawArc(x + 2, y + 2, size - 4, size - 4, 45, 270);
-                        g2d.drawLine(x + size - 4, y + 4, x + size - 2, y + 2);
-                        g2d.drawLine(x + size - 4, y + 4, x + size - 6, y + 6);
-                        break;
-                    case NOTES:
-                        g2d.drawRect(x + 3, y + 2, size - 6, size - 4);
-                        g2d.drawLine(x + 6, y + 5, x + size - 6, y + 5);
-                        g2d.drawLine(x + 6, y + 8, x + size - 6, y + 8);
-                        g2d.drawLine(x + 6, y + 11, x + size - 8, y + 11);
-                        break;
-                    case SEARCH:
-                        g2d.drawOval(x + 2, y + 2, size - 8, size - 8);
-                        g2d.drawLine(x + size - 6, y + size - 6, x + size - 2, y + size - 2);
-                        break;
-                    case GRID:
-                        int gridSize = size / 3;
-                        for (int i = 0; i < 3; i++) {
-                            for (int j = 0; j < 3; j++) {
-                                g2d.drawRect(x + 1 + i * (gridSize + 1), y + 1 + j * (gridSize + 1), gridSize, gridSize);
-                            }
-                        }
-                        break;
-                    case TABLE:
-                        g2d.drawRect(x + 2, y + 3, size - 4, size - 6);
-                        g2d.drawLine(x + 2, y + 6, x + size - 2, y + 6);
-                        g2d.drawLine(x + 2, y + 9, x + size - 2, y + 9);
-                        g2d.drawLine(x + 6, y + 3, x + 6, y + size - 3);
-                        g2d.drawLine(x + 10, y + 3, x + 10, y + size - 3);
-                        break;
-                    case GRADUATION:
-                        // Chapeau de graduation
-                        g2d.drawLine(x + 2, centerY, x + size - 2, centerY);
-                        g2d.drawLine(x + 4, centerY - 2, x + size - 4, centerY - 2);
-                        g2d.drawLine(centerX, y + 3, centerX, centerY + 3);
-                        g2d.drawOval(centerX - 1, centerY + 3, 2, 2);
-                        break;
-                    case USER:
-                        g2d.drawOval(centerX - 3, y + 3, 6, 6);
-                        g2d.drawArc(x + 2, y + 8, size - 4, size - 6, 0, 180);
-                        break;
-                    case EMAIL:
-                        g2d.drawRect(x + 2, y + 4, size - 4, size - 8);
-                        g2d.drawLine(x + 2, y + 4, centerX, centerY);
-                        g2d.drawLine(centerX, centerY, x + size - 2, y + 4);
-                        break;
-                    case LOCATION:
-                        g2d.drawOval(centerX - 4, y + 2, 8, 8);
-                        g2d.drawLine(centerX, y + 10, centerX - 2, y + size - 2);
-                        g2d.drawLine(centerX, y + 10, centerX + 2, y + size - 2);
-                        g2d.fillOval(centerX - 2, y + 4, 4, 4);
-                        break;
-                    case BOOK:
-                        g2d.drawRect(x + 3, y + 2, size - 6, size - 4);
-                        g2d.drawLine(x + 3, y + 5, x + size - 3, y + 5);
-                        g2d.drawLine(centerX, y + 2, centerX, y + size - 2);
-                        break;
-                    case TARGET:
-                        g2d.drawOval(x + 2, y + 2, size - 4, size - 4);
-                        g2d.drawOval(centerX - 2, centerY - 2, 4, 4);
-                        g2d.fillOval(centerX - 1, centerY - 1, 2, 2);
-                        break;
-                    case CAMERA:
-                        g2d.drawRect(x + 2, y + 4, size - 4, size - 6);
-                        g2d.drawRect(x + 5, y + 2, size - 10, 2);
-                        g2d.drawOval(centerX - 3, centerY, 6, 6);
-                        g2d.fillOval(centerX - 1, centerY + 2, 2, 2);
-                        break;
-                    case SAVE:
-                        g2d.drawRect(x + 2, y + 2, size - 4, size - 4);
-                        g2d.drawRect(x + 4, y + 2, size - 8, 4);
-                        g2d.drawLine(x + 6, y + 8, x + 6, y + size - 4);
-                        g2d.drawLine(x + size - 6, y + 8, x + size - 6, y + size - 4);
-                        break;
-                    case CANCEL:
-                        g2d.drawLine(x + 3, y + 3, x + size - 3, y + size - 3);
-                        g2d.drawLine(x + 3, y + size - 3, x + size - 3, y + 3);
-                        break;
-                }
-                g2d.dispose();
-            }
-
-            @Override
-            public int getIconWidth() { return size; }
-
-            @Override
-            public int getIconHeight() { return size; }
-        };
     }
 
     private JPanel createContentPanel() {
@@ -562,19 +390,21 @@ public class StudentManagementFrame extends JPanel {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(BACKGROUND_COLOR);
 
-        String[] columns = {"Matricule", "Prénom", "Nom", "Email", "Adresse", "Niveau", "Parcours", "Photo", "Actions"};
+        String[] columns = { "Matricule", "Prénom", "Nom", "Email", "Adresse", "Niveau", "Parcours", "Photo", "Actions" };
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 8; // Seule la colonne "Actions" est éditable
+                return column == 8;
             }
         };
 
         studentTable = createEnhancedTable();
+
         studentTable.getColumn("Photo").setCellRenderer(new EnhancedPhotoCellRenderer());
         studentTable.getColumn("Photo").setPreferredWidth(70);
         studentTable.getColumn("Photo").setMaxWidth(70);
         studentTable.getColumn("Photo").setMinWidth(70);
+
         studentTable.getColumn("Actions").setCellRenderer(new EnhancedButtonRenderer());
         studentTable.getColumn("Actions").setCellEditor(new EnhancedButtonEditor());
         studentTable.getColumn("Actions").setPreferredWidth(200);
@@ -590,19 +420,22 @@ public class StudentManagementFrame extends JPanel {
             @Override
             public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
                 Component comp = super.prepareRenderer(renderer, row, column);
+
                 if (!isRowSelected(row)) {
                     comp.setBackground(row % 2 == 0 ? CARD_COLOR : new Color(249, 250, 251));
                 } else {
                     comp.setBackground(new Color(239, 246, 255));
                 }
+
                 if (comp instanceof JLabel) {
                     ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
                 }
+
                 return comp;
             }
         };
 
-        table.setFont(getModernFont(Font.PLAIN, 14));
+        table.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         table.setRowHeight(60);
         table.setBackground(CARD_COLOR);
         table.setSelectionBackground(new Color(239, 246, 255));
@@ -612,7 +445,7 @@ public class StudentManagementFrame extends JPanel {
         table.setIntercellSpacing(new Dimension(0, 1));
 
         JTableHeader header = table.getTableHeader();
-        header.setFont(getModernFont(Font.BOLD, 14));
+        header.setFont(getEmojiSupportedFont(Font.BOLD, 14));
         header.setBackground(new Color(248, 250, 252));
         header.setForeground(TEXT_PRIMARY);
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, BORDER_COLOR));
@@ -628,14 +461,13 @@ public class StudentManagementFrame extends JPanel {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Ombre
+
                 g2d.setColor(new Color(0, 0, 0, 10));
                 g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 16, 16);
-                
-                // Fond
+
                 g2d.setColor(CARD_COLOR);
                 g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 16, 16);
+
                 g2d.dispose();
                 super.paintComponent(g);
             }
@@ -659,11 +491,7 @@ public class StudentManagementFrame extends JPanel {
 
     private void toggleView(JButton toggleButton) {
         isTableView = !isTableView;
-        toggleButton.setText(isTableView ? "Vue Cartes" : "Vue Tableau");
-        toggleButton.setIcon(createVectorIcon(
-            isTableView ? IconType.GRID : IconType.TABLE, 
-            16, 
-            TEXT_PRIMARY));
+        toggleButton.setText(isTableView ? "📋 Vue Cartes" : "📊 Vue Tableau");
 
         CardLayout cl = (CardLayout) ((JPanel) ((JPanel) getComponent(1)).getComponent(1)).getLayout();
         cl.show((JPanel) ((JPanel) getComponent(1)).getComponent(1), isTableView ? "table" : "cards");
@@ -694,22 +522,18 @@ public class StudentManagementFrame extends JPanel {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Ombre plus prononcée
-                g2d.setColor(new Color(0, 0, 0, 20));
+
+                g2d.setColor(new Color(0, 0, 0, 15));
                 g2d.fillRoundRect(4, 4, getWidth() - 8, getHeight() - 8, 20, 20);
-                
-                // Gradient de fond
-                GradientPaint gradient = new GradientPaint(
-                    0, 0, CARD_COLOR, 
-                    0, getHeight(), new Color(253, 254, 255));
+
+                GradientPaint gradient = new GradientPaint(0, 0, CARD_COLOR, 0, getHeight(), new Color(253, 254, 255));
                 g2d.setPaint(gradient);
                 g2d.fillRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 20, 20);
-                
-                // Bordure subtile
+
                 g2d.setColor(BORDER_COLOR);
                 g2d.setStroke(new BasicStroke(1));
                 g2d.drawRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 20, 20);
+
                 g2d.dispose();
             }
         };
@@ -739,10 +563,10 @@ public class StudentManagementFrame extends JPanel {
             try {
                 photoLabel.setImage(URI.create(etudiant.getphoto_url()).toURL());
             } catch (Exception e) {
-                photoLabel.setIcon(createVectorIcon(IconType.USER, 35, TEXT_SECONDARY));
+                photoLabel.setText("👤");
             }
         } else {
-            photoLabel.setIcon(createVectorIcon(IconType.USER, 35, TEXT_SECONDARY));
+            photoLabel.setText("👤");
         }
 
         photoSection.add(photoLabel);
@@ -754,41 +578,36 @@ public class StudentManagementFrame extends JPanel {
         infoSection.setLayout(new BoxLayout(infoSection, BoxLayout.Y_AXIS));
         infoSection.setBackground(Color.WHITE);
 
-        String name = etudiant != null ? 
-            (etudiant.getPrenom() != null ? etudiant.getPrenom() : "") + " " +
-            (etudiant.getNom() != null ? etudiant.getNom() : "") : "N/A";
+        String name = etudiant != null ? (etudiant.getPrenom() != null ? etudiant.getPrenom() : "") + " " +
+                (etudiant.getNom() != null ? etudiant.getNom() : "") : "N/A";
         JLabel nameLabel = new JLabel(name);
-        nameLabel.setFont(getModernFont(Font.BOLD, 20));
+        nameLabel.setFont(getEmojiSupportedFont(Font.BOLD, 20));
         nameLabel.setForeground(TEXT_PRIMARY);
         nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         String matricule = etudiant != null && etudiant.getMatricule() != null ? etudiant.getMatricule() : "N/A";
-        JLabel matriculeLabel = new JLabel(matricule);
-        matriculeLabel.setFont(getModernFont(Font.BOLD, 14));
+        JLabel matriculeLabel = new JLabel("📋 " + matricule);
+        matriculeLabel.setFont(getEmojiSupportedFont(Font.BOLD, 14));
         matriculeLabel.setForeground(PRIMARY_COLOR);
         matriculeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        matriculeLabel.setIcon(createVectorIcon(IconType.USER, 14, PRIMARY_COLOR));
 
         String email = etudiant != null && etudiant.getEmail() != null ? etudiant.getEmail() : "N/A";
-        JLabel emailLabel = new JLabel(email);
-        emailLabel.setFont(getModernFont(Font.PLAIN, 13));
+        JLabel emailLabel = new JLabel("📧 " + email);
+        emailLabel.setFont(getEmojiSupportedFont(Font.PLAIN, 13));
         emailLabel.setForeground(TEXT_SECONDARY);
         emailLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        emailLabel.setIcon(createVectorIcon(IconType.EMAIL, 14, TEXT_SECONDARY));
 
         String niveau = etudiant != null ? getNiveauLabel(etudiant.getNiveauId()) : "N/A";
-        JLabel niveauLabel = new JLabel(niveau);
-        niveauLabel.setFont(getModernFont(Font.PLAIN, 13));
+        JLabel niveauLabel = new JLabel("📚 " + niveau);
+        niveauLabel.setFont(getEmojiSupportedFont(Font.PLAIN, 13));
         niveauLabel.setForeground(TEXT_SECONDARY);
         niveauLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        niveauLabel.setIcon(createVectorIcon(IconType.BOOK, 14, TEXT_SECONDARY));
 
         String parcours = etudiant != null ? getParcoursLabel(etudiant.getParcoursId()) : "N/A";
-        JLabel parcoursLabel = new JLabel(parcours);
-        parcoursLabel.setFont(getModernFont(Font.PLAIN, 13));
+        JLabel parcoursLabel = new JLabel("🎯 " + parcours);
+        parcoursLabel.setFont(getEmojiSupportedFont(Font.PLAIN, 13));
         parcoursLabel.setForeground(TEXT_SECONDARY);
         parcoursLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        parcoursLabel.setIcon(createVectorIcon(IconType.TARGET, 14, TEXT_SECONDARY));
 
         infoSection.add(nameLabel);
         infoSection.add(Box.createVerticalStrut(10));
@@ -807,20 +626,20 @@ public class StudentManagementFrame extends JPanel {
         JPanel actionsSection = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
         actionsSection.setBackground(Color.WHITE);
 
-        JButton editButton = createEnhancedCardActionButton(IconType.EDIT, WARNING_COLOR, "Modifier");
+        JButton editButton = createEnhancedCardActionButton("✏️", WARNING_COLOR, "Modifier");
         editButton.addActionListener(_ -> showStudentFormDialog(etudiant));
 
-        JButton deleteButton = createEnhancedCardActionButton(IconType.DELETE, ERROR_COLOR, "Supprimer");
+        JButton deleteButton = createEnhancedCardActionButton("🗑️", ERROR_COLOR, "Supprimer");
         deleteButton.addActionListener(_ -> {
             if (etudiant != null && etudiant.getId() != null) {
                 deleteStudent(etudiant.getId());
             }
         });
 
-        JButton updateButton = createEnhancedCardActionButton(IconType.REFRESH, SECONDARY_COLOR, "Niveau/Parcours");
+        JButton updateButton = createEnhancedCardActionButton("🔄", SECONDARY_COLOR, "Niveau/Parcours");
         updateButton.addActionListener(_ -> showUpdateNiveauParcoursDialog(etudiant));
 
-        JButton notesButton = createEnhancedCardActionButton(IconType.NOTES, NOTES_COLOR, "Gérer les Notes");
+        JButton notesButton = createEnhancedCardActionButton("📝", NOTES_COLOR, "Gérer les Notes");
         notesButton.addActionListener(_ -> showNotesDialog(etudiant));
 
         actionsSection.add(editButton);
@@ -831,43 +650,36 @@ public class StudentManagementFrame extends JPanel {
         return actionsSection;
     }
 
-    private JButton createEnhancedCardActionButton(IconType iconType, Color color, String tooltip) {
-        JButton button = new JButton() {
-            private boolean isHovered = false;
-
+    private JButton createEnhancedCardActionButton(String icon, Color color, String tooltip) {
+        JButton button = new JButton(icon) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                Color currentColor = isHovered ? color.brighter() : color;
-                
-                // Ombre
-                g2d.setColor(new Color(0, 0, 0, 20));
-                g2d.fillOval(2, 2, getWidth() - 4, getHeight() - 4);
-                
-                // Fond du bouton
+
+                Color currentColor;
+                if (getModel().isPressed()) {
+                    currentColor = color.darker();
+                } else if (getModel().isRollover()) {
+                    currentColor = color.brighter();
+                } else {
+                    currentColor = color;
+                }
+
                 g2d.setColor(currentColor);
-                g2d.fillOval(0, 0, getWidth() - 2, getHeight() - 2);
-                
+                g2d.fillOval(0, 0, getWidth(), getHeight());
+
+                g2d.setColor(new Color(0, 0, 0, 20));
+                g2d.setStroke(new BasicStroke(1));
+                g2d.drawOval(1, 1, getWidth() - 3, getHeight() - 3);
+
                 g2d.dispose();
                 super.paintComponent(g);
             }
-
-            @Override
-            protected void processMouseEvent(MouseEvent e) {
-                if (e.getID() == MouseEvent.MOUSE_ENTERED) {
-                    isHovered = true;
-                    repaint();
-                } else if (e.getID() == MouseEvent.MOUSE_EXITED) {
-                    isHovered = false;
-                    repaint();
-                }
-                super.processMouseEvent(e);
-            }
         };
 
-        button.setIcon(createVectorIcon(iconType, 16, Color.WHITE));
+        button.setFont(getEmojiSupportedFont(Font.PLAIN, 16));
+        button.setForeground(Color.WHITE);
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
         button.setFocusPainted(false);
@@ -880,141 +692,63 @@ public class StudentManagementFrame extends JPanel {
 
     private void showStudentFormDialog(Etudiant etudiant) {
         boolean isEdit = etudiant != null;
-        
-        // Créer une boîte de dialogue moderne
-        studentDialog = new ModernDialog(
-            (Frame) SwingUtilities.getWindowAncestor(this),
-            isEdit ? "Modifier l'Étudiant" : "Ajouter un Étudiant"
-        );
-        
-        studentDialog.setSize(700, 900);
+        studentDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
+                isEdit ? "Modifier l'Étudiant" : "Ajouter un Étudiant", true);
+        studentDialog.setLayout(new BorderLayout());
+        studentDialog.setSize(650, 850);
         studentDialog.setLocationRelativeTo(this);
 
         loadNiveauxAndParcours();
 
-        JPanel mainPanel = createModernDialogContent(etudiant, isEdit);
-        studentDialog.add(mainPanel);
-        studentDialog.setVisible(true);
-    }
+        JPanel mainPanel = createEnhancedDialogPanel();
 
-    // Classe pour une boîte de dialogue moderne
-    private class ModernDialog extends JDialog {
-        public ModernDialog(Frame parent, String title) {
-            super(parent, title, true);
-            setUndecorated(true);
-            setBackground(new Color(0, 0, 0, 0));
-            
-            // Ajouter une bordure arrondie et une ombre
-            getRootPane().setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEmptyBorder(10, 10, 10, 10),
-                new ModernBorder(BORDER_COLOR)
-            ));
-        }
-
-        @Override
-        public void paint(Graphics g) {
-            Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            
-            // Ombre de la boîte de dialogue
-            g2d.setColor(new Color(0, 0, 0, 30));
-            g2d.fillRoundRect(5, 5, getWidth() - 10, getHeight() - 10, 20, 20);
-            
-            // Fond de la boîte de dialogue
-            g2d.setColor(CARD_COLOR);
-            g2d.fillRoundRect(0, 0, getWidth() - 10, getHeight() - 10, 20, 20);
-            
-            g2d.dispose();
-            super.paint(g);
-        }
-    }
-
-    private JPanel createModernDialogContent(Etudiant etudiant, boolean isEdit) {
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBackground(CARD_COLOR);
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-
-        // En-tête moderne
-        JPanel headerPanel = createModernDialogHeader(
-            isEdit ? "Modifier l'Étudiant" : "Ajouter un Étudiant",
-            "Veuillez remplir tous les champs requis",
-            isEdit ? IconType.EDIT : IconType.PLUS
-        );
+        JPanel headerPanel = createEnhancedDialogHeader(
+                isEdit ? "✏️ Modifier l'Étudiant" : "➕ Ajouter un Étudiant",
+                "Veuillez remplir tous les champs requis");
         mainPanel.add(headerPanel, BorderLayout.NORTH);
 
-        // Formulaire
-        JPanel formPanel = createModernStudentForm(etudiant, isEdit);
+        JPanel formPanel = createEnhancedStudentFormPanel(etudiant, isEdit);
         JScrollPane formScrollPane = new JScrollPane(formPanel);
         formScrollPane.setBorder(null);
         formScrollPane.getVerticalScrollBar().setUnitIncrement(16);
         mainPanel.add(formScrollPane, BorderLayout.CENTER);
 
-        // Boutons
-        JPanel buttonPanel = createModernDialogButtons(etudiant, isEdit);
+        JPanel buttonPanel = createEnhancedStudentFormButtons(etudiant, isEdit);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
-        return mainPanel;
+        studentDialog.add(mainPanel);
+        studentDialog.setVisible(true);
     }
 
-    private JPanel createModernDialogHeader(String titleText, String subtitleText, IconType iconType) {
+    private JPanel createEnhancedDialogPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(BACKGROUND_COLOR);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        return panel;
+    }
+
+    private JPanel createEnhancedDialogHeader(String titleText, String subtitleText) {
         JPanel headerPanel = new JPanel();
         headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
         headerPanel.setBackground(CARD_COLOR);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
-
-        JPanel titleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        titleRow.setBackground(CARD_COLOR);
-
-        JLabel iconLabel = new JLabel(createVectorIcon(iconType, 32, PRIMARY_COLOR));
-        titleRow.add(iconLabel);
-        titleRow.add(Box.createHorizontalStrut(15));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel titleLabel = new JLabel(titleText);
-        titleLabel.setFont(getModernFont(Font.BOLD, 28));
+        titleLabel.setFont(getEmojiSupportedFont(Font.BOLD, 24));
         titleLabel.setForeground(TEXT_PRIMARY);
-        titleRow.add(titleLabel);
 
         JLabel subtitleLabel = new JLabel(subtitleText);
-        subtitleLabel.setFont(getModernFont(Font.PLAIN, 14));
+        subtitleLabel.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         subtitleLabel.setForeground(TEXT_SECONDARY);
-        subtitleLabel.setBorder(BorderFactory.createEmptyBorder(10, 47, 0, 0));
 
-        // Bouton de fermeture
-        JButton closeButton = new JButton() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                if (getModel().isRollover()) {
-                    g2d.setColor(new Color(239, 68, 68, 50));
-                    g2d.fillOval(0, 0, getWidth(), getHeight());
-                }
-                
-                g2d.dispose();
-                super.paintComponent(g);
-            }
-        };
-        closeButton.setIcon(createVectorIcon(IconType.CANCEL, 16, TEXT_SECONDARY));
-        closeButton.setContentAreaFilled(false);
-        closeButton.setBorderPainted(false);
-        closeButton.setFocusPainted(false);
-        closeButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        closeButton.setPreferredSize(new Dimension(32, 32));
-        closeButton.addActionListener(_ -> studentDialog.dispose());
-
-        JPanel topRow = new JPanel(new BorderLayout());
-        topRow.setBackground(CARD_COLOR);
-        topRow.add(titleRow, BorderLayout.WEST);
-        topRow.add(closeButton, BorderLayout.EAST);
-
-        headerPanel.add(topRow);
+        headerPanel.add(titleLabel);
+        headerPanel.add(Box.createVerticalStrut(10));
         headerPanel.add(subtitleLabel);
 
         return headerPanel;
     }
 
-    private JPanel createModernStudentForm(Etudiant etudiant, boolean isEdit) {
+    private JPanel createEnhancedStudentFormPanel(Etudiant etudiant, boolean isEdit) {
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(CARD_COLOR);
         formPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
@@ -1023,38 +757,34 @@ public class StudentManagementFrame extends JPanel {
         gbc.insets = new Insets(15, 0, 15, 0);
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
+
         gbc.gridx = 0;
         gbc.gridy = 0;
-
-        // Matricule
-        formPanel.add(createModernFormLabel("Matricule *", IconType.USER), gbc);
+        formPanel.add(createEnhancedFormLabel("Matricule *"), gbc);
         gbc.gridy = 1;
-        matriculeField = createModernTextField(isEdit && etudiant != null ? etudiant.getMatricule() : "");
-        matriculeField.setPreferredSize(new Dimension(600, 50));
+        matriculeField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getMatricule() : "");
+        matriculeField.setPreferredSize(new Dimension(550, 50));
         formPanel.add(matriculeField, gbc);
 
-        // Prénom
         gbc.gridy = 2;
-        formPanel.add(createModernFormLabel("Prénom *", IconType.USER), gbc);
+        formPanel.add(createEnhancedFormLabel("Prénom *"), gbc);
         gbc.gridy = 3;
-        firstNameField = createModernTextField(isEdit && etudiant != null ? etudiant.getPrenom() : "");
-        firstNameField.setPreferredSize(new Dimension(600, 50));
+        firstNameField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getPrenom() : "");
+        firstNameField.setPreferredSize(new Dimension(550, 50));
         formPanel.add(firstNameField, gbc);
 
-        // Nom
         gbc.gridy = 4;
-        formPanel.add(createModernFormLabel("Nom *", IconType.USER), gbc);
+        formPanel.add(createEnhancedFormLabel("Nom *"), gbc);
         gbc.gridy = 5;
-        lastNameField = createModernTextField(isEdit && etudiant != null ? etudiant.getNom() : "");
-        lastNameField.setPreferredSize(new Dimension(600, 50));
+        lastNameField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getNom() : "");
+        lastNameField.setPreferredSize(new Dimension(550, 50));
         formPanel.add(lastNameField, gbc);
 
-        // Email
         gbc.gridy = 6;
-        formPanel.add(createModernFormLabel("Email *", IconType.EMAIL), gbc);
+        formPanel.add(createEnhancedFormLabel("Email *"), gbc);
         gbc.gridy = 7;
-        emailField = createModernTextField(isEdit && etudiant != null ? etudiant.getEmail() : "");
-        emailField.setPreferredSize(new Dimension(600, 50));
+        emailField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getEmail() : "");
+        emailField.setPreferredSize(new Dimension(550, 50));
         emailField.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent e) {
@@ -1063,27 +793,34 @@ public class StudentManagementFrame extends JPanel {
         });
         formPanel.add(emailField, gbc);
 
-        // Adresse
         gbc.gridy = 8;
-        formPanel.add(createModernFormLabel("Adresse", IconType.LOCATION), gbc);
+        formPanel.add(createEnhancedFormLabel("Adresse"), gbc);
         gbc.gridy = 9;
-        adresseField = createModernTextField(isEdit && etudiant != null ? etudiant.getAdresse() : "");
-        adresseField.setPreferredSize(new Dimension(600, 50));
+        adresseField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getAdresse() : "");
+        adresseField.setPreferredSize(new Dimension(550, 50));
         formPanel.add(adresseField, gbc);
 
-        // Niveau
         gbc.gridy = 10;
-        formPanel.add(createModernFormLabel("Niveau *", IconType.BOOK), gbc);
+        formPanel.add(createEnhancedFormLabel("Niveau Classe"), gbc);
         gbc.gridy = 11;
-        niveauComboBox = createModernNiveauComboBox();
-        niveauComboBox.setPreferredSize(new Dimension(600, 50));
-        for (Niveau niveau : allNiveaux) {
-            if (niveau != null) {
-                niveauComboBox.addItem(niveau);
+        niveauClasseField = createEnhancedTextField(isEdit && etudiant != null ? etudiant.getNiveauClasse() : "");
+        niveauClasseField.setPreferredSize(new Dimension(550, 50));
+        formPanel.add(niveauClasseField, gbc);
+
+        gbc.gridy = 12;
+        formPanel.add(createEnhancedFormLabel("Niveau *"), gbc);
+        gbc.gridy = 13;
+        niveauComboBox = createEnhancedNiveauComboBox();
+        niveauComboBox.setPreferredSize(new Dimension(550, 50));
+        if (allNiveaux != null) {
+            for (Niveau niveau : new ArrayList<>(allNiveaux)) {
+                if (niveau != null) {
+                    niveauComboBox.addItem(niveau);
+                }
             }
         }
-        if (isEdit && etudiant != null && etudiant.getNiveauId() != null) {
-            for (Niveau niveau : allNiveaux) {
+        if (isEdit && etudiant != null && etudiant.getNiveauId() != null && allNiveaux != null) {
+            for (Niveau niveau : new ArrayList<>(allNiveaux)) {
                 if (niveau != null && niveau.getId() != null && niveau.getId().equals(etudiant.getNiveauId())) {
                     niveauComboBox.setSelectedItem(niveau);
                     break;
@@ -1092,19 +829,20 @@ public class StudentManagementFrame extends JPanel {
         }
         formPanel.add(niveauComboBox, gbc);
 
-        // Parcours
-        gbc.gridy = 12;
-        formPanel.add(createModernFormLabel("Parcours *", IconType.TARGET), gbc);
-        gbc.gridy = 13;
-        parcoursComboBox = createModernParcoursComboBox();
-        parcoursComboBox.setPreferredSize(new Dimension(600, 50));
-        for (Parcours parcours : allParcours) {
-            if (parcours != null) {
-                parcoursComboBox.addItem(parcours);
+        gbc.gridy = 14;
+        formPanel.add(createEnhancedFormLabel("Parcours *"), gbc);
+        gbc.gridy = 15;
+        parcoursComboBox = createEnhancedParcoursComboBox();
+        parcoursComboBox.setPreferredSize(new Dimension(550, 50));
+        if (allParcours != null) {
+            for (Parcours parcours : new ArrayList<>(allParcours)) {
+                if (parcours != null) {
+                    parcoursComboBox.addItem(parcours);
+                }
             }
         }
-        if (isEdit && etudiant != null && etudiant.getParcoursId() != null) {
-            for (Parcours parcours : allParcours) {
+        if (isEdit && etudiant != null && etudiant.getParcoursId() != null && allParcours != null) {
+            for (Parcours parcours : new ArrayList<>(allParcours)) {
                 if (parcours != null && parcours.getId() != null && parcours.getId().equals(etudiant.getParcoursId())) {
                     parcoursComboBox.setSelectedItem(parcours);
                     break;
@@ -1113,152 +851,113 @@ public class StudentManagementFrame extends JPanel {
         }
         formPanel.add(parcoursComboBox, gbc);
 
-        // Photo
-        gbc.gridy = 14;
-        formPanel.add(createModernFormLabel("Photo", IconType.CAMERA), gbc);
-        gbc.gridy = 15;
-        JPanel photoPanel = createModernPhotoSelectionPanel();
+        gbc.gridy = 16;
+        formPanel.add(createEnhancedFormLabel("Photo"), gbc);
+        gbc.gridy = 17;
+        JPanel photoPanel = createEnhancedPhotoSelectionPanel();
         formPanel.add(photoPanel, gbc);
 
         return formPanel;
     }
 
-    private JLabel createModernFormLabel(String text, IconType iconType) {
+    private JLabel createEnhancedFormLabel(String text) {
         JLabel label = new JLabel(text);
-        label.setFont(getModernFont(Font.BOLD, 14));
+        label.setFont(getEmojiSupportedFont(Font.BOLD, 14));
         label.setForeground(TEXT_PRIMARY);
-        label.setIcon(createVectorIcon(iconType, 16, PRIMARY_COLOR));
-        label.setIconTextGap(8);
         return label;
     }
 
-    private JTextField createModernTextField(String text) {
+    private JTextField createEnhancedTextField(String text) {
         JTextField textField = new JTextField(text) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Ombre subtile
-                g2d.setColor(new Color(0, 0, 0, 5));
-                g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 12, 12);
-                
-                // Fond
                 g2d.setColor(getBackground());
-                g2d.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 12, 12);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
                 g2d.dispose();
                 super.paintComponent(g);
             }
         };
 
-        textField.setFont(getModernFont(Font.PLAIN, 14));
+        textField.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         textField.setBackground(CARD_COLOR);
         textField.setForeground(TEXT_PRIMARY);
         textField.setBorder(BorderFactory.createCompoundBorder(
-            new ModernBorder(BORDER_COLOR),
-            BorderFactory.createEmptyBorder(12, 16, 12, 16)));
-
-        // Effet de focus
-        textField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                textField.setBorder(BorderFactory.createCompoundBorder(
-                    new ModernBorder(PRIMARY_COLOR),
-                    BorderFactory.createEmptyBorder(12, 16, 12, 16)));
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                textField.setBorder(BorderFactory.createCompoundBorder(
-                    new ModernBorder(BORDER_COLOR),
-                    BorderFactory.createEmptyBorder(12, 16, 12, 16)));
-            }
-        });
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
 
         return textField;
     }
 
-    private JComboBox<Niveau> createModernNiveauComboBox() {
+    private JComboBox<Niveau> createEnhancedNiveauComboBox() {
         JComboBox<Niveau> comboBox = new JComboBox<Niveau>() {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Ombre subtile
-                g2d.setColor(new Color(0, 0, 0, 5));
-                g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 12, 12);
-                
-                // Fond
                 g2d.setColor(getBackground());
-                g2d.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 12, 12);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
                 g2d.dispose();
                 super.paintComponent(g);
             }
         };
 
-        comboBox.setFont(getModernFont(Font.PLAIN, 14));
+        comboBox.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         comboBox.setBackground(CARD_COLOR);
         comboBox.setForeground(TEXT_PRIMARY);
         comboBox.setBorder(BorderFactory.createCompoundBorder(
-            new ModernBorder(BORDER_COLOR),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
 
         return comboBox;
     }
 
-    private JComboBox<Parcours> createModernParcoursComboBox() {
+    private JComboBox<Parcours> createEnhancedParcoursComboBox() {
         JComboBox<Parcours> comboBox = new JComboBox<Parcours>() {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Ombre subtile
-                g2d.setColor(new Color(0, 0, 0, 5));
-                g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 12, 12);
-                
-                // Fond
                 g2d.setColor(getBackground());
-                g2d.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 12, 12);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
                 g2d.dispose();
                 super.paintComponent(g);
             }
         };
 
-        comboBox.setFont(getModernFont(Font.PLAIN, 14));
+        comboBox.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         comboBox.setBackground(CARD_COLOR);
         comboBox.setForeground(TEXT_PRIMARY);
         comboBox.setBorder(BorderFactory.createCompoundBorder(
-            new ModernBorder(BORDER_COLOR),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+                new ModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
 
         return comboBox;
     }
 
-    private JPanel createModernPhotoSelectionPanel() {
+    private JPanel createEnhancedPhotoSelectionPanel() {
         JPanel photoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
         photoPanel.setBackground(CARD_COLOR);
 
-        JButton choosePhotoButton = createModernButton("Choisir une Photo", IconType.CAMERA, SECONDARY_COLOR, false);
+        JButton choosePhotoButton = createEnhancedButton("📷 Choisir une Photo", SECONDARY_COLOR, false);
         choosePhotoButton.addActionListener(_ -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                "Images (*.jpg, *.png, *.jpeg)", "jpg", "png", "jpeg"));
+                    "Images (*.jpg, *.png, *.jpeg)", "jpg", "png", "jpeg"));
+
             if (fileChooser.showOpenDialog(studentDialog) == JFileChooser.APPROVE_OPTION) {
                 selectedPhoto = fileChooser.getSelectedFile();
                 if (selectedPhoto != null) {
-                    photoPreviewLabel.setText(selectedPhoto.getName());
+                    photoPreviewLabel.setText("📷 " + selectedPhoto.getName());
                     photoPreviewLabel.setForeground(SUCCESS_COLOR);
-                    photoPreviewLabel.setIcon(createVectorIcon(IconType.CAMERA, 16, SUCCESS_COLOR));
                 }
             }
         });
 
         photoPreviewLabel = new JLabel("Aucune photo sélectionnée");
-        photoPreviewLabel.setFont(getModernFont(Font.ITALIC, 14));
+        photoPreviewLabel.setFont(getEmojiSupportedFont(Font.ITALIC, 14));
         photoPreviewLabel.setForeground(TEXT_SECONDARY);
-        photoPreviewLabel.setIcon(createVectorIcon(IconType.CAMERA, 16, TEXT_SECONDARY));
 
         photoPanel.add(choosePhotoButton);
         photoPanel.add(photoPreviewLabel);
@@ -1266,13 +965,13 @@ public class StudentManagementFrame extends JPanel {
         return photoPanel;
     }
 
-    private JPanel createModernDialogButtons(Etudiant etudiant, boolean isEdit) {
+    private JPanel createEnhancedStudentFormButtons(Etudiant etudiant, boolean isEdit) {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 0));
         buttonPanel.setBackground(CARD_COLOR);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(30, 0, 0, 0));
 
-        JButton saveButton = createModernButton("Enregistrer", IconType.SAVE, PRIMARY_COLOR, true);
-        JButton cancelButton = createModernButton("Annuler", IconType.CANCEL, new Color(156, 163, 175), false);
+        JButton saveButton = createEnhancedButton("💾 Enregistrer", PRIMARY_COLOR, true);
+        JButton cancelButton = createEnhancedButton("❌ Annuler", new Color(156, 163, 175), false);
 
         saveButton.addActionListener(_ -> saveStudent(etudiant, isEdit));
         cancelButton.addActionListener(_ -> studentDialog.dispose());
@@ -1289,30 +988,28 @@ public class StudentManagementFrame extends JPanel {
         String lastName = lastNameField.getText() != null ? lastNameField.getText().trim() : "";
         String email = emailField.getText() != null ? emailField.getText().trim() : "";
         String adresse = adresseField.getText() != null ? adresseField.getText().trim() : "";
-        String niveauClasse = niveauClasseField != null && niveauClasseField.getText() != null ? 
-            niveauClasseField.getText().trim() : "";
-
+        String niveauClasse = niveauClasseField.getText() != null ? niveauClasseField.getText().trim() : "";
         Niveau selectedNiveau = (Niveau) niveauComboBox.getSelectedItem();
         Parcours selectedParcours = (Parcours) parcoursComboBox.getSelectedItem();
 
         if (matricule.isEmpty() || firstName.isEmpty() || lastName.isEmpty() || email.isEmpty()) {
-            showModernErrorDialog("Tous les champs marqués d'un * sont obligatoires.");
+            showEnhancedErrorDialog("Tous les champs marqués d'un * sont obligatoires.");
             return;
         }
 
         if (!isValidEmail(email)) {
-            showModernErrorDialog("Veuillez saisir une adresse email valide.");
+            showEnhancedErrorDialog("Veuillez saisir une adresse email valide.");
             emailField.requestFocus();
             return;
         }
 
         if (selectedNiveau == null) {
-            showModernErrorDialog("Veuillez sélectionner un niveau.");
+            showEnhancedErrorDialog("Veuillez sélectionner un niveau.");
             return;
         }
 
         if (selectedParcours == null) {
-            showModernErrorDialog("Veuillez sélectionner un parcours.");
+            showEnhancedErrorDialog("Veuillez sélectionner un parcours.");
             return;
         }
 
@@ -1330,107 +1027,119 @@ public class StudentManagementFrame extends JPanel {
             if (isEdit && etudiant != null) {
                 student.setId(etudiant.getId());
                 studentService.updateEtudiant(etudiant.getId(), student, selectedPhoto);
-                showModernSuccessDialog("Étudiant modifié avec succès!");
+                showSuccessNotification("Étudiant modifié avec succès!");
             } else {
                 studentService.addEtudiant(student, responsableId, selectedPhoto);
-                showModernSuccessDialog("Étudiant ajouté avec succès!");
+                showSuccessNotification("Étudiant ajouté avec succès!");
             }
-
             loadStudents();
             clearFields();
             studentDialog.dispose();
-
         } catch (ApiException ex) {
-            showModernErrorDialog("Erreur lors de l'enregistrement: " + ex.getMessage());
+            showEnhancedErrorDialog("Erreur lors de l'enregistrement: " + ex.getMessage());
         }
     }
 
-    private void showModernErrorDialog(String message) {
-        showModernNotificationDialog(message, "Erreur", IconType.CANCEL, ERROR_COLOR);
-    }
+    private void showNotesDialog(Etudiant etudiant) {
+        if (etudiant == null) {
+            showErrorNotification("Erreur: Étudiant non sélectionné.");
+            return;
+        }
 
-    private void showModernSuccessDialog(String message) {
-        showModernNotificationDialog(message, "Succès", IconType.SAVE, SUCCESS_COLOR);
-    }
-
-    private void showModernNotificationDialog(String message, String title, IconType iconType, Color color) {
-        JDialog dialog = new ModernDialog((Frame) SwingUtilities.getWindowAncestor(this), title);
-        dialog.setSize(450, 200);
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Gérer les Notes", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(600, 400);
         dialog.setLocationRelativeTo(this);
 
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(CARD_COLOR);
-        panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        JPanel mainPanel = createEnhancedDialogPanel();
 
-        JPanel messagePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
-        messagePanel.setBackground(CARD_COLOR);
+        JPanel headerPanel = createEnhancedDialogHeader("📝 Gérer les Notes de " + etudiant.getPrenom() + " " + etudiant.getNom(),
+                "Ajoutez ou modifiez les notes de l'étudiant");
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
 
-        JLabel iconLabel = new JLabel(createVectorIcon(iconType, 32, color));
-        messagePanel.add(iconLabel);
+        JPanel notesPanel = createNotesPanel(etudiant);
+        JScrollPane notesScrollPane = new JScrollPane(notesPanel);
+        notesScrollPane.setBorder(null);
+        mainPanel.add(notesScrollPane, BorderLayout.CENTER);
 
-        JLabel messageLabel = new JLabel(message);
-        messageLabel.setFont(getModernFont(Font.PLAIN, 16));
-        messageLabel.setForeground(TEXT_PRIMARY);
-        messagePanel.add(messageLabel);
+        JPanel buttonPanel = createNotesButtonPanel(dialog);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
-        panel.add(messagePanel, BorderLayout.CENTER);
-
-        JButton okButton = createModernButton("OK", IconType.SAVE, PRIMARY_COLOR, true);
-        okButton.addActionListener(_ -> dialog.dispose());
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        buttonPanel.setBackground(CARD_COLOR);
-        buttonPanel.add(okButton);
-
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-        dialog.add(panel);
+        dialog.add(mainPanel);
         dialog.setVisible(true);
     }
 
-    // Continuer avec les autres méthodes existantes...
-    private void loadStudents() {
-        SwingWorker<List<Etudiant>, Void> worker = new SwingWorker<List<Etudiant>, Void>() {
-            @Override
-            protected List<Etudiant> doInBackground() throws Exception {
-                try {
-                    List<Etudiant> students = studentService.getAllEtudiants(responsableId);
-                    System.out.println("Fetched " + (students != null ? students.size() : 0) + " students");
-                    return students;
-                } catch (Exception e) {
-                    System.err.println("Error fetching students: " + e.getMessage());
-                    throw e;
-                }
-            }
+    private JPanel createNotesPanel(Etudiant etudiant) {
+        JPanel notesPanel = new JPanel(new BorderLayout());
+        notesPanel.setBackground(CARD_COLOR);
 
+        DefaultTableModel notesTableModel = new DefaultTableModel(new String[]{"Matière", "Note", "Semestre", "Année", "Actions"}, 0) {
             @Override
-            protected void done() {
-                try {
-                    List<Etudiant> students = get();
-                    allStudents = students != null ? new ArrayList<>(students) : new ArrayList<>();
-                    System.out.println("Students loaded: " + allStudents.size());
-                    if (allStudents.isEmpty()) {
-                        showWarningNotification("Aucun étudiant trouvé.");
-                    }
-                    filterStudents();
-                } catch (InterruptedException | ExecutionException ex) {
-                    System.err.println("Error loading students: " + ex.getMessage());
-                    showErrorNotification("Erreur lors du chargement des étudiants: " + ex.getMessage());
-                    allStudents = new ArrayList<>();
-                }
+            public boolean isCellEditable(int row, int column) {
+                return column == 4;
             }
         };
-        worker.execute();
+
+        JTable notesTable = new JTable(notesTableModel);
+        notesTable.setRowHeight(40);
+        notesTable.getColumn("Actions").setCellRenderer(new NotesButtonRenderer());
+        notesTable.getColumn("Actions").setCellEditor(new NotesButtonEditor(etudiant, notesTable, notesTableModel));
+        notesTable.getColumn("Actions").setPreferredWidth(100);
+
+        try {
+            List<Note> notes = studentService.getNotesByEtudiant(etudiant.getId());
+            List<Matiere> matieres = studentService.getAllMatieres();
+            for (Matiere matiere : matieres) {
+                String noteValue = "";
+                String semestre = "";
+                String annee = "";
+                for (Note note : notes) {
+                    if (note.getMatiereId().equals(matiere.getId())) {
+                        noteValue = String.valueOf(note.getValeur());
+                        semestre = note.getSemestre() != null ? note.getSemestre() : "";
+                        annee = note.getAnnee() != null ? note.getAnnee() : "";
+                        break;
+                    }
+                }
+                notesTableModel.addRow(new Object[]{matiere.getNom(), noteValue, semestre, annee, "Actions"});
+            }
+        } catch (ApiException ex) {
+            showErrorNotification("Erreur lors du chargement des notes: " + ex.getMessage());
+        }
+
+        notesPanel.add(new JScrollPane(notesTable), BorderLayout.CENTER);
+        return notesPanel;
+    }
+
+    private JPanel createNotesButtonPanel(JDialog dialog) {
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.setBackground(CARD_COLOR);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+
+        JButton closeButton = createEnhancedButton("Fermer", ERROR_COLOR, true);
+        closeButton.addActionListener(_ -> dialog.dispose());
+
+        buttonPanel.add(closeButton);
+        return buttonPanel;
+    }
+
+    private void loadStudents() {
+        try {
+            allStudents = studentService.getAllEtudiants(responsableId);
+            filterStudents();
+        } catch (ApiException ex) {
+            showErrorNotification("Erreur lors du chargement des étudiants: " + ex.getMessage());
+            allStudents = new ArrayList<>();
+        }
     }
 
     private void filterStudents() {
         if (tableModel != null) {
             tableModel.setRowCount(0);
             List<Etudiant> students = filterStudentsList();
-            System.out.println("Filtering " + students.size() + " students");
-
             for (Etudiant e : students) {
                 if (e != null) {
-                    tableModel.addRow(new Object[]{
+                    tableModel.addRow(new Object[] {
                         e.getMatricule() != null ? e.getMatricule() : "",
                         e.getPrenom() != null ? e.getPrenom() : "",
                         e.getNom() != null ? e.getNom() : "",
@@ -1439,12 +1148,11 @@ public class StudentManagementFrame extends JPanel {
                         getNiveauLabel(e.getNiveauId()),
                         getParcoursLabel(e.getParcoursId()),
                         e.getphoto_url(),
-                        "Actions"
+                        "Actions",
+                        e
                     });
                 }
             }
-
-            tableModel.fireTableDataChanged();
             if (!isTableView) {
                 updateCardsView();
             }
@@ -1454,22 +1162,15 @@ public class StudentManagementFrame extends JPanel {
     private List<Etudiant> filterStudentsList() {
         List<Etudiant> filteredList = new ArrayList<>(allStudents);
         String searchText = searchField.getText().trim().toLowerCase();
-        System.out.println("Search text: '" + searchText + "'");
-
-        String effectiveSearchText = searchText.equals("rechercher des étudiants...") || searchText.isEmpty() ? 
-            "" : searchText;
-
-        if (!effectiveSearchText.isEmpty()) {
+        if (!searchText.equals("🔍 Rechercher des étudiants...") && !searchText.isEmpty()) {
             filteredList.removeIf(e -> {
                 if (e == null) return true;
-                String fullName = (e.getPrenom() != null ? e.getPrenom() : "") + " " +
-                    (e.getNom() != null ? e.getNom() : "");
+                String fullName = (e.getPrenom() != null ? e.getPrenom() : "") + " " + (e.getNom() != null ? e.getNom() : "");
                 String matricule = e.getMatricule() != null ? e.getMatricule() : "";
                 String email = e.getEmail() != null ? e.getEmail() : "";
-
-                return !fullName.toLowerCase().contains(effectiveSearchText) &&
-                       !matricule.toLowerCase().contains(effectiveSearchText) &&
-                       !email.toLowerCase().contains(effectiveSearchText);
+                return !fullName.toLowerCase().contains(searchText) &&
+                       !matricule.toLowerCase().contains(searchText) &&
+                       !email.toLowerCase().contains(searchText);
             });
         }
 
@@ -1489,57 +1190,53 @@ public class StudentManagementFrame extends JPanel {
     private String getNiveauLabel(String niveauId) {
         if (niveauId == null || allNiveaux == null) return "N/A";
         return allNiveaux.stream()
-            .filter(n -> n != null && n.getId() != null && n.getId().equals(niveauId))
-            .map(Niveau::getNom)
-            .findFirst()
-            .orElse("N/A");
+                .filter(n -> n != null && n.getId() != null && n.getId().equals(niveauId))
+                .map(Niveau::getNom)
+                .findFirst()
+                .orElse("N/A");
     }
 
     private String getParcoursLabel(String parcoursId) {
         if (parcoursId == null || allParcours == null) return "N/A";
         return allParcours.stream()
-            .filter(p -> p != null && p.getId() != null && p.getId().equals(parcoursId))
-            .map(Parcours::getNom)
-            .findFirst()
-            .orElse("N/A");
+                .filter(p -> p != null && p.getId() != null && p.getId().equals(parcoursId))
+                .map(Parcours::getNom)
+                .findFirst()
+                .orElse("N/A");
     }
 
     private void deleteStudent(String studentId) {
         int response = JOptionPane.showConfirmDialog(this,
-            "Êtes-vous sûr de vouloir supprimer cet étudiant ?",
-            "Confirmer la suppression",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE);
-
+                "Êtes-vous sûr de vouloir supprimer cet étudiant ?",
+                "Confirmer la suppression",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
         if (response == JOptionPane.YES_OPTION) {
             try {
                 studentService.deleteEtudiant(studentId);
-                showModernSuccessDialog("Étudiant supprimé avec succès!");
+                showSuccessNotification("Étudiant supprimé avec succès!");
                 loadStudents();
             } catch (ApiException ex) {
-                showModernErrorDialog("Erreur lors de la suppression: " + ex.getMessage());
+                showErrorNotification("Erreur lors de la suppression: " + ex.getMessage());
             }
         }
     }
 
     private void showUpdateNiveauParcoursDialog(Etudiant etudiant) {
         if (etudiant == null) {
-            showModernErrorDialog("Erreur: Étudiant non sélectionné.");
+            showErrorNotification("Erreur: Étudiant non sélectionné.");
             return;
         }
 
-        JDialog dialog = new ModernDialog((Frame) SwingUtilities.getWindowAncestor(this), 
-            "Mettre à jour Niveau/Parcours");
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Mettre à jour Niveau/Parcours", true);
+        dialog.setLayout(new BorderLayout());
         dialog.setSize(500, 300);
         dialog.setLocationRelativeTo(this);
 
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBackground(CARD_COLOR);
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        JPanel mainPanel = createEnhancedDialogPanel();
 
-        JPanel headerPanel = createModernDialogHeader("Mettre à jour Niveau/Parcours",
-            "Sélectionnez le nouveau niveau et parcours pour " + etudiant.getPrenom() + " " + etudiant.getNom(),
-            IconType.REFRESH);
+        JPanel headerPanel = createEnhancedDialogHeader("🔄 Mettre à jour Niveau/Parcours",
+                "Sélectionnez le nouveau niveau et parcours pour " + etudiant.getPrenom() + " " + etudiant.getNom());
         mainPanel.add(headerPanel, BorderLayout.NORTH);
 
         JPanel updatePanel = new JPanel(new GridBagLayout());
@@ -1548,10 +1245,11 @@ public class StudentManagementFrame extends JPanel {
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        gbc.gridx = 0; gbc.gridy = 0;
-        updatePanel.add(createModernFormLabel("Niveau", IconType.BOOK), gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        updatePanel.add(createEnhancedFormLabel("Niveau"), gbc);
         gbc.gridx = 1;
-        JComboBox<Niveau> niveauUpdateCombo = createModernNiveauComboBox();
+        JComboBox<Niveau> niveauUpdateCombo = createEnhancedNiveauComboBox();
         niveauUpdateCombo.setPreferredSize(new Dimension(300, 40));
         for (Niveau niveau : allNiveaux) {
             if (niveau != null) {
@@ -1559,15 +1257,16 @@ public class StudentManagementFrame extends JPanel {
             }
         }
         niveauUpdateCombo.setSelectedItem(allNiveaux.stream()
-            .filter(n -> n.getId().equals(etudiant.getNiveauId()))
-            .findFirst()
-            .orElse(null));
+                .filter(n -> n.getId().equals(etudiant.getNiveauId()))
+                .findFirst()
+                .orElse(null));
         updatePanel.add(niveauUpdateCombo, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 1;
-        updatePanel.add(createModernFormLabel("Parcours", IconType.TARGET), gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        updatePanel.add(createEnhancedFormLabel("Parcours"), gbc);
         gbc.gridx = 1;
-        JComboBox<Parcours> parcoursUpdateCombo = createModernParcoursComboBox();
+        JComboBox<Parcours> parcoursUpdateCombo = createEnhancedParcoursComboBox();
         parcoursUpdateCombo.setPreferredSize(new Dimension(300, 40));
         for (Parcours parcours : allParcours) {
             if (parcours != null) {
@@ -1575,37 +1274,32 @@ public class StudentManagementFrame extends JPanel {
             }
         }
         parcoursUpdateCombo.setSelectedItem(allParcours.stream()
-            .filter(p -> p.getId().equals(etudiant.getParcoursId()))
-            .findFirst()
-            .orElse(null));
+                .filter(p -> p.getId().equals(etudiant.getParcoursId()))
+                .findFirst()
+                .orElse(null));
         updatePanel.add(parcoursUpdateCombo, gbc);
 
         mainPanel.add(updatePanel, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.setBackground(CARD_COLOR);
-
-        JButton saveButton = createModernButton("Enregistrer", IconType.SAVE, PRIMARY_COLOR, true);
+        JButton saveButton = createEnhancedButton("Enregistrer", PRIMARY_COLOR, true);
         saveButton.addActionListener(_ -> {
             Niveau selectedNiveau = (Niveau) niveauUpdateCombo.getSelectedItem();
             Parcours selectedParcours = (Parcours) parcoursUpdateCombo.getSelectedItem();
-
             if (selectedNiveau != null && selectedParcours != null) {
                 try {
-                    studentService.updateNiveauParcours(etudiant.getId(), selectedNiveau.getId(),
-                        selectedParcours.getId());
-                    showModernSuccessDialog("Niveau et parcours mis à jour avec succès!");
+                    studentService.updateNiveauParcours(etudiant.getId(), selectedNiveau.getId(), selectedParcours.getId());
+                    showSuccessNotification("Niveau et parcours mis à jour avec succès!");
                     loadStudents();
                     dialog.dispose();
                 } catch (ApiException ex) {
-                    showModernErrorDialog("Erreur lors de la mise à jour: " + ex.getMessage());
+                    showErrorNotification("Erreur lors de la mise à jour: " + ex.getMessage());
                 }
             }
         });
-
-        JButton cancelButton = createModernButton("Annuler", IconType.CANCEL, ERROR_COLOR, true);
+        JButton cancelButton = createEnhancedButton("Annuler", ERROR_COLOR, true);
         cancelButton.addActionListener(_ -> dialog.dispose());
-
         buttonPanel.add(saveButton);
         buttonPanel.add(cancelButton);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
@@ -1614,106 +1308,42 @@ public class StudentManagementFrame extends JPanel {
         dialog.setVisible(true);
     }
 
-    private void showNotesDialog(Etudiant etudiant) {
-        if (etudiant == null) {
-            showModernErrorDialog("Erreur: Étudiant non sélectionné.");
-            return;
-        }
-
-        JDialog dialog = new ModernDialog((Frame) SwingUtilities.getWindowAncestor(this), "Gérer les Notes");
-        dialog.setSize(600, 400);
-        dialog.setLocationRelativeTo(this);
-
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBackground(CARD_COLOR);
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-
-        JPanel headerPanel = createModernDialogHeader(
-            "Gérer les Notes de " + etudiant.getPrenom() + " " + etudiant.getNom(),
-            "Ajoutez ou modifiez les notes de l'étudiant",
-            IconType.NOTES);
-        mainPanel.add(headerPanel, BorderLayout.NORTH);
-
-        JPanel notesPanel = createNotesPanel(etudiant);
-        JScrollPane notesScrollPane = new JScrollPane(notesPanel);
-        notesScrollPane.setBorder(null);
-        mainPanel.add(notesScrollPane, BorderLayout.CENTER);
-
-        JPanel buttonPanel = createNotesButtonPanel(dialog);
-        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        dialog.add(mainPanel);
-        dialog.setVisible(true);
-    }
-
-    private JPanel createNotesPanel(Etudiant etudiant) {
-        JPanel notesPanel = new JPanel(new BorderLayout());
-        notesPanel.setBackground(CARD_COLOR);
-
-        DefaultTableModel notesTableModel = new DefaultTableModel(
-            new String[]{"Matière", "Note", "Semestre", "Année", "Actions"}, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return column == 4;
-            }
-        };
-
-        JTable notesTable = new JTable(notesTableModel);
-        notesTable.setRowHeight(40);
-        notesTable.getColumn("Actions").setCellRenderer(new NotesButtonRenderer());
-        notesTable.getColumn("Actions").setCellEditor(new NotesButtonEditor(etudiant, notesTable, notesTableModel));
-        notesTable.getColumn("Actions").setPreferredWidth(100);
-
-        try {
-            List<Note> notes = studentService.getNotesByEtudiant(etudiant.getId());
-            List<Matiere> matieres = studentService.getAllMatieres();
-
-            for (Matiere matiere : matieres) {
-                String noteValue = "";
-                String semestre = "";
-                String annee = "";
-
-                for (Note note : notes) {
-                    if (note.getMatiereId().equals(matiere.getId())) {
-                        noteValue = String.valueOf(note.getValeur());
-                        semestre = note.getSemestre() != null ? note.getSemestre() : "";
-                        annee = note.getAnnee() != null ? note.getAnnee() : "";
-                        break;
-                    }
-                }
-
-                notesTableModel.addRow(new Object[]{matiere.getNom(), noteValue, semestre, annee, "Actions"});
-            }
-        } catch (ApiException ex) {
-            showModernErrorDialog("Erreur lors du chargement des notes: " + ex.getMessage());
-        }
-
-        notesPanel.add(new JScrollPane(notesTable), BorderLayout.CENTER);
-        return notesPanel;
-    }
-
-    private JPanel createNotesButtonPanel(JDialog dialog) {
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.setBackground(CARD_COLOR);
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-
-        JButton closeButton = createModernButton("Fermer", IconType.CANCEL, ERROR_COLOR, true);
-        closeButton.addActionListener(_ -> dialog.dispose());
-
-        buttonPanel.add(closeButton);
-        return buttonPanel;
-    }
-
     private void showSuccessNotification(String message) {
-        showModernSuccessDialog(message);
+        JOptionPane.showMessageDialog(this, message, "Succès", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void showErrorNotification(String message) {
-        showModernErrorDialog(message);
+        JOptionPane.showMessageDialog(this, message, "Erreur", JOptionPane.ERROR_MESSAGE);
     }
 
     private void showWarningNotification(String message) {
-        showModernNotificationDialog(message, "Avertissement", IconType.REFRESH, WARNING_COLOR);
+        JOptionPane.showMessageDialog(this, message, "Avertissement", JOptionPane.WARNING_MESSAGE);
+    }
+
+    private void showEnhancedErrorDialog(String message) {
+        JDialog errorDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Erreur", true);
+        errorDialog.setLayout(new BorderLayout());
+        errorDialog.setSize(400, 200);
+        errorDialog.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(CARD_COLOR);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JLabel label = new JLabel(message);
+        label.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
+        label.setForeground(TEXT_PRIMARY);
+        panel.add(label, BorderLayout.CENTER);
+
+        JButton okButton = createEnhancedButton("OK", PRIMARY_COLOR, true);
+        okButton.addActionListener(_ -> errorDialog.dispose());
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBackground(CARD_COLOR);
+        buttonPanel.add(okButton);
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        errorDialog.add(panel);
+        errorDialog.setVisible(true);
     }
 
     private boolean isValidEmail(String email) {
@@ -1726,33 +1356,29 @@ public class StudentManagementFrame extends JPanel {
         String email = emailField.getText().trim();
         if (!isValidEmail(email) && !email.isEmpty()) {
             emailField.setBorder(BorderFactory.createCompoundBorder(
-                new ModernBorder(ERROR_COLOR),
-                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+                    new ModernBorder(ERROR_COLOR),
+                    BorderFactory.createEmptyBorder(12, 16, 12, 16)));
         } else {
             emailField.setBorder(BorderFactory.createCompoundBorder(
-                new ModernBorder(BORDER_COLOR),
-                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+                    new ModernBorder(BORDER_COLOR),
+                    BorderFactory.createEmptyBorder(12, 16, 12, 16)));
         }
     }
 
     private void clearFields() {
-        if (matriculeField != null) matriculeField.setText("");
-        if (firstNameField != null) firstNameField.setText("");
-        if (lastNameField != null) lastNameField.setText("");
-        if (emailField != null) emailField.setText("");
-        if (adresseField != null) adresseField.setText("");
-        if (niveauClasseField != null) niveauClasseField.setText("");
-        if (niveauComboBox != null) niveauComboBox.setSelectedIndex(-1);
-        if (parcoursComboBox != null) parcoursComboBox.setSelectedIndex(-1);
+        matriculeField.setText("");
+        firstNameField.setText("");
+        lastNameField.setText("");
+        emailField.setText("");
+        adresseField.setText("");
+        niveauClasseField.setText("");
+        niveauComboBox.setSelectedIndex(-1);
+        parcoursComboBox.setSelectedIndex(-1);
         selectedPhoto = null;
-        if (photoPreviewLabel != null) {
-            photoPreviewLabel.setText("Aucune photo sélectionnée");
-            photoPreviewLabel.setForeground(TEXT_SECONDARY);
-            photoPreviewLabel.setIcon(createVectorIcon(IconType.CAMERA, 16, TEXT_SECONDARY));
-        }
+        photoPreviewLabel.setText("Aucune photo sélectionnée");
+        photoPreviewLabel.setForeground(TEXT_SECONDARY);
     }
 
-    // Classes internes pour les renderers et editors...
     private class EnhancedPhotoCellRenderer extends JPanel implements TableCellRenderer {
         private EnhancedRoundImageLabel imageLabel;
 
@@ -1764,43 +1390,36 @@ public class StudentManagementFrame extends JPanel {
         }
 
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
-                boolean hasFocus, int row, int column) {
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
-
-            int modelRow = table.convertRowIndexToModel(row);
-            List<Etudiant> filteredStudents = filterStudentsList();
-
-            if (modelRow >= 0 && modelRow < filteredStudents.size()) {
-                Etudiant etudiant = filteredStudents.get(modelRow);
-                if (etudiant != null && etudiant.getphoto_url() != null && !etudiant.getphoto_url().isEmpty()) {
-                    try {
-                        imageLabel.setImage(URI.create(etudiant.getphoto_url()).toURL());
-                    } catch (Exception e) {
-                        imageLabel.setIcon(createVectorIcon(IconType.USER, 20, TEXT_SECONDARY));
-                    }
-                } else {
-                    imageLabel.setIcon(createVectorIcon(IconType.USER, 20, TEXT_SECONDARY));
+            Etudiant etudiant = (Etudiant) table.getModel().getValueAt(row, 9);
+            if (etudiant != null && etudiant.getphoto_url() != null && !etudiant.getphoto_url().isEmpty()) {
+                try {
+                    imageLabel.setImage(URI.create(etudiant.getphoto_url()).toURL());
+                } catch (Exception e) {
+                    imageLabel.setText("👤");
                 }
             } else {
-                imageLabel.setIcon(createVectorIcon(IconType.USER, 20, TEXT_SECONDARY));
+                imageLabel.setText("👤");
             }
-
             return this;
         }
     }
 
     private class EnhancedButtonRenderer extends JPanel implements TableCellRenderer {
-        private JButton editButton, deleteButton, updateButton, notesButton;
+        private JButton editButton;
+        private JButton deleteButton;
+        private JButton updateButton;
+        private JButton notesButton;
 
         public EnhancedButtonRenderer() {
             setLayout(new FlowLayout(FlowLayout.CENTER, 8, 8));
             setOpaque(false);
 
-            editButton = createModernTableActionButton(IconType.EDIT, WARNING_COLOR);
-            deleteButton = createModernTableActionButton(IconType.DELETE, ERROR_COLOR);
-            updateButton = createModernTableActionButton(IconType.REFRESH, SECONDARY_COLOR);
-            notesButton = createModernTableActionButton(IconType.NOTES, NOTES_COLOR);
+            editButton = createEnhancedTableActionButton("✏️", WARNING_COLOR);
+            deleteButton = createEnhancedTableActionButton("🗑️", ERROR_COLOR);
+            updateButton = createEnhancedTableActionButton("🔄", SECONDARY_COLOR);
+            notesButton = createEnhancedTableActionButton("📝", NOTES_COLOR);
 
             add(editButton);
             add(deleteButton);
@@ -1808,8 +1427,8 @@ public class StudentManagementFrame extends JPanel {
             add(notesButton);
         }
 
-        private JButton createModernTableActionButton(IconType iconType, Color color) {
-            JButton button = new JButton() {
+        private JButton createEnhancedTableActionButton(String text, Color color) {
+            JButton button = new JButton(text) {
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2d = (Graphics2D) g.create();
@@ -1821,7 +1440,8 @@ public class StudentManagementFrame extends JPanel {
                 }
             };
 
-            button.setIcon(createVectorIcon(iconType, 13, Color.WHITE));
+            button.setFont(getEmojiSupportedFont(Font.PLAIN, 13));
+            button.setForeground(Color.WHITE);
             button.setContentAreaFilled(false);
             button.setBorderPainted(false);
             button.setFocusPainted(false);
@@ -1832,8 +1452,7 @@ public class StudentManagementFrame extends JPanel {
         }
 
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
-                boolean hasFocus, int row, int column) {
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
             return this;
         }
@@ -1841,17 +1460,20 @@ public class StudentManagementFrame extends JPanel {
 
     private class EnhancedButtonEditor extends AbstractCellEditor implements TableCellEditor {
         private JPanel panel;
-        private JButton editButton, deleteButton, updateButton, notesButton;
+        private JButton editButton;
+        private JButton deleteButton;
+        private JButton updateButton;
+        private JButton notesButton;
         private Etudiant currentStudent;
 
         public EnhancedButtonEditor() {
             panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 8));
             panel.setOpaque(false);
 
-            editButton = createModernTableActionButton(IconType.EDIT, WARNING_COLOR);
-            deleteButton = createModernTableActionButton(IconType.DELETE, ERROR_COLOR);
-            updateButton = createModernTableActionButton(IconType.REFRESH, SECONDARY_COLOR);
-            notesButton = createModernTableActionButton(IconType.NOTES, NOTES_COLOR);
+            editButton = createEnhancedTableActionButton("✏️", WARNING_COLOR);
+            deleteButton = createEnhancedTableActionButton("🗑️", ERROR_COLOR);
+            updateButton = createEnhancedTableActionButton("🔄", SECONDARY_COLOR);
+            notesButton = createEnhancedTableActionButton("📝", NOTES_COLOR);
 
             editButton.addActionListener(_ -> {
                 fireEditingStopped();
@@ -1887,8 +1509,8 @@ public class StudentManagementFrame extends JPanel {
             panel.add(notesButton);
         }
 
-        private JButton createModernTableActionButton(IconType iconType, Color color) {
-            JButton button = new JButton() {
+        private JButton createEnhancedTableActionButton(String text, Color color) {
+            JButton button = new JButton(text) {
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2d = (Graphics2D) g.create();
@@ -1900,7 +1522,8 @@ public class StudentManagementFrame extends JPanel {
                 }
             };
 
-            button.setIcon(createVectorIcon(iconType, 13, Color.WHITE));
+            button.setFont(getEmojiSupportedFont(Font.PLAIN, 13));
+            button.setForeground(Color.WHITE);
             button.setContentAreaFilled(false);
             button.setBorderPainted(false);
             button.setFocusPainted(false);
@@ -1911,18 +1534,8 @@ public class StudentManagementFrame extends JPanel {
         }
 
         @Override
-        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, 
-                int row, int column) {
-            int modelRow = table.convertRowIndexToModel(row);
-            List<Etudiant> filteredStudents = filterStudentsList();
-
-            if (modelRow >= 0 && modelRow < filteredStudents.size()) {
-                currentStudent = filteredStudents.get(modelRow);
-            } else {
-                currentStudent = null;
-            }
-
-            panel.setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            currentStudent = (Etudiant) table.getModel().getValueAt(row, 9);
             return panel;
         }
 
@@ -1938,12 +1551,13 @@ public class StudentManagementFrame extends JPanel {
         public NotesButtonRenderer() {
             setLayout(new FlowLayout(FlowLayout.CENTER));
             setOpaque(false);
-            editButton = createModernTableActionButton(IconType.EDIT, WARNING_COLOR);
+
+            editButton = createEnhancedTableActionButton("✏️", WARNING_COLOR);
             add(editButton);
         }
 
-        private JButton createModernTableActionButton(IconType iconType, Color color) {
-            JButton button = new JButton() {
+        private JButton createEnhancedTableActionButton(String text, Color color) {
+            JButton button = new JButton(text) {
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2d = (Graphics2D) g.create();
@@ -1955,7 +1569,8 @@ public class StudentManagementFrame extends JPanel {
                 }
             };
 
-            button.setIcon(createVectorIcon(iconType, 13, Color.WHITE));
+            button.setFont(getEmojiSupportedFont(Font.PLAIN, 13));
+            button.setForeground(Color.WHITE);
             button.setContentAreaFilled(false);
             button.setBorderPainted(false);
             button.setFocusPainted(false);
@@ -1966,8 +1581,7 @@ public class StudentManagementFrame extends JPanel {
         }
 
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, 
-                boolean hasFocus, int row, int column) {
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
             return this;
         }
@@ -1988,7 +1602,7 @@ public class StudentManagementFrame extends JPanel {
             panel = new JPanel(new FlowLayout(FlowLayout.CENTER));
             panel.setOpaque(false);
 
-            editButton = createModernTableActionButton(IconType.EDIT, WARNING_COLOR);
+            editButton = createEnhancedTableActionButton("✏️", WARNING_COLOR);
             editButton.addActionListener(_ -> {
                 fireEditingStopped();
                 editNote();
@@ -1997,8 +1611,8 @@ public class StudentManagementFrame extends JPanel {
             panel.add(editButton);
         }
 
-        private JButton createModernTableActionButton(IconType iconType, Color color) {
-            JButton button = new JButton() {
+        private JButton createEnhancedTableActionButton(String text, Color color) {
+            JButton button = new JButton(text) {
                 @Override
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2d = (Graphics2D) g.create();
@@ -2010,7 +1624,8 @@ public class StudentManagementFrame extends JPanel {
                 }
             };
 
-            button.setIcon(createVectorIcon(iconType, 13, Color.WHITE));
+            button.setFont(getEmojiSupportedFont(Font.PLAIN, 13));
+            button.setForeground(Color.WHITE);
             button.setContentAreaFilled(false);
             button.setBorderPainted(false);
             button.setFocusPainted(false);
@@ -2021,8 +1636,7 @@ public class StudentManagementFrame extends JPanel {
         }
 
         @Override
-        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, 
-                int row, int column) {
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             return panel;
         }
 
@@ -2048,45 +1662,44 @@ public class StudentManagementFrame extends JPanel {
                 gbc.insets = new Insets(5, 5, 5, 5);
                 gbc.fill = GridBagConstraints.HORIZONTAL;
 
-                gbc.gridx = 0; gbc.gridy = 0;
+                gbc.gridx = 0;
+                gbc.gridy = 0;
                 inputPanel.add(new JLabel("Note pour " + matiereName + ":"), gbc);
                 gbc.gridx = 1;
                 inputPanel.add(noteField, gbc);
 
-                gbc.gridx = 0; gbc.gridy = 1;
+                gbc.gridx = 0;
+                gbc.gridy = 1;
                 inputPanel.add(new JLabel("Semestre:"), gbc);
                 gbc.gridx = 1;
                 inputPanel.add(semestreField, gbc);
 
-                gbc.gridx = 0; gbc.gridy = 2;
+                gbc.gridx = 0;
+                gbc.gridy = 2;
                 inputPanel.add(new JLabel("Année:"), gbc);
                 gbc.gridx = 1;
                 inputPanel.add(anneeField, gbc);
 
-                int result = JOptionPane.showConfirmDialog(null, inputPanel, "Modifier la Note",
-                    JOptionPane.OK_CANCEL_OPTION);
-
+                int result = JOptionPane.showConfirmDialog(null, inputPanel, "Modifier la Note", JOptionPane.OK_CANCEL_OPTION);
                 if (result == JOptionPane.OK_OPTION) {
                     try {
                         double noteValue = Double.parseDouble(noteField.getText().trim());
                         if (noteValue < 0 || noteValue > 20) {
-                            showModernErrorDialog("La note doit être comprise entre 0 et 20.");
+                            showErrorNotification("La note doit être comprise entre 0 et 20.");
                             return;
                         }
 
                         String semestre = semestreField.getText().trim();
                         String annee = anneeField.getText().trim();
-
                         if (semestre.isEmpty() || annee.isEmpty()) {
-                            showModernErrorDialog("Les champs Semestre et Année sont obligatoires.");
+                            showErrorNotification("Les champs Semestre et Année sont obligatoires.");
                             return;
                         }
 
                         Matiere matiere = studentService.getAllMatieres().stream()
-                            .filter(m -> m.getNom().equals(matiereName))
-                            .findFirst()
-                            .orElse(null);
-
+                                .filter(m -> m.getNom().equals(matiereName))
+                                .findFirst()
+                                .orElse(null);
                         if (matiere != null) {
                             Note note = new Note();
                             note.setEtudiantId(etudiant.getId());
@@ -2097,11 +1710,11 @@ public class StudentManagementFrame extends JPanel {
 
                             List<Note> existingNotes = studentService.getNotesByEtudiant(etudiant.getId());
                             Note existingNote = existingNotes.stream()
-                                .filter(n -> n.getMatiereId().equals(matiere.getId()) &&
-                                           n.getSemestre().equals(semestre) &&
-                                           n.getAnnee().equals(annee))
-                                .findFirst()
-                                .orElse(null);
+                                    .filter(n -> n.getMatiereId().equals(matiere.getId()) &&
+                                            n.getSemestre().equals(semestre) &&
+                                            n.getAnnee().equals(annee))
+                                    .findFirst()
+                                    .orElse(null);
 
                             if (existingNote != null) {
                                 note.setId(existingNote.getId());
@@ -2109,17 +1722,15 @@ public class StudentManagementFrame extends JPanel {
                             } else {
                                 studentService.addNote(note);
                             }
-
                             tableModel.setValueAt(String.valueOf(noteValue), selectedRow, 1);
                             tableModel.setValueAt(semestre, selectedRow, 2);
                             tableModel.setValueAt(annee, selectedRow, 3);
-
-                            showModernSuccessDialog("Note mise à jour avec succès!");
+                            showSuccessNotification("Note mise à jour avec succès!");
                         }
                     } catch (NumberFormatException ex) {
-                        showModernErrorDialog("Veuillez entrer une note valide.");
+                        showErrorNotification("Veuillez entrer une note valide.");
                     } catch (ApiException ex) {
-                        showModernErrorDialog("Erreur lors de la mise à jour de la note: " + ex.getMessage());
+                        showErrorNotification("Erreur lors de la mise à jour de la note: " + ex.getMessage());
                     }
                 }
             }
@@ -2163,18 +1774,17 @@ public class StudentManagementFrame extends JPanel {
             setPreferredSize(new Dimension(size, size));
             setHorizontalAlignment(CENTER);
             setVerticalAlignment(CENTER);
-            setFont(getModernFont(Font.PLAIN, size / 2));
+            setFont(getEmojiSupportedFont(Font.PLAIN, size / 2));
         }
 
         public void setImage(URL url) {
             try {
                 image = new ImageIcon(url).getImage();
                 setText(null);
-                setIcon(null);
                 repaint();
             } catch (Exception e) {
                 image = null;
-                setIcon(createVectorIcon(IconType.USER, size / 2, TEXT_SECONDARY));
+                setText("👤");
             }
         }
 
@@ -2183,26 +1793,19 @@ public class StudentManagementFrame extends JPanel {
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            int diameter = Math.min(getWidth(), getHeight());
-            int x = (getWidth() - diameter) / 2;
-            int y = (getHeight() - diameter) / 2;
-
-            Shape clip = new Ellipse2D.Double(x, y, diameter, diameter);
+            Shape clip = new Ellipse2D.Double(0, 0, size, size);
             g2d.setClip(clip);
 
             if (image != null) {
-                g2d.drawImage(image, x, y, diameter, diameter, this);
+                g2d.drawImage(image, 0, 0, size, size, this);
             } else {
-                g2d.setClip(null);
-                g2d.setColor(new Color(248, 250, 252));
-                g2d.fillOval(x, y, diameter, diameter);
                 super.paintComponent(g2d);
             }
 
             g2d.setClip(null);
             g2d.setColor(BORDER_COLOR);
             g2d.setStroke(new BasicStroke(2));
-            g2d.drawOval(x, y, diameter - 1, diameter - 1);
+            g2d.drawOval(0, 0, size - 1, size - 1);
 
             g2d.dispose();
         }

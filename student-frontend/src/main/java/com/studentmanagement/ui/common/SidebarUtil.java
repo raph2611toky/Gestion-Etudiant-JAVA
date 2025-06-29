@@ -3,7 +3,9 @@ package com.studentmanagement.ui.common;
 import com.studentmanagement.model.ResponsableResponse;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.awt.event.*;
+import java.util.Arrays;
 
 public class SidebarUtil {
     private static final Color SIDEBAR_COLOR = new Color(52, 73, 94);
@@ -18,19 +20,23 @@ public class SidebarUtil {
         sidebar.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
 
         JLabel logoLabel = new JLabel("Student Manager");
-        logoLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        logoLabel.setFont(getEmojiSupportedFont(Font.BOLD, 18));
         logoLabel.setForeground(Color.WHITE);
         logoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         logoLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
         sidebar.add(logoLabel);
 
-        sidebar.add(createMenuButton("🏠 Dashboard", "Dashboard".equals(activeMenu), _ -> mainWindow.showPanel("Dashboard")));
+        sidebar.add(createMenuButton("📊 Dashboard", "Dashboard".equals(activeMenu),
+                _ -> mainWindow.showPanel("Dashboard")));
         sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
-        sidebar.add(createMenuButton("👥 Étudiants", "Students".equals(activeMenu), _ -> mainWindow.showPanel("Students")));
+        sidebar.add(createMenuButton("👥 Étudiants", "Students".equals(activeMenu),
+                _ -> mainWindow.showPanel("Students")));
         sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
-        sidebar.add(createMenuButton("📊 Notes", "Grades".equals(activeMenu), _ -> mainWindow.showPanel("Grades")));
+        sidebar.add(createMenuButton("📋 Notes", "Grades".equals(activeMenu),
+                _ -> mainWindow.showPanel("Grades")));
         sidebar.add(Box.createRigidArea(new Dimension(0, 5)));
-        sidebar.add(createMenuButton("⚙️ Paramètres", "Settings".equals(activeMenu), _ -> mainWindow.showPanel("Settings")));
+        sidebar.add(createMenuButton("⚙️ Paramètres", "Settings".equals(activeMenu),
+                _ -> mainWindow.showPanel("Settings")));
 
         sidebar.add(Box.createVerticalGlue());
 
@@ -43,7 +49,8 @@ public class SidebarUtil {
             profilePanel.setMaximumSize(new Dimension(220, 60));
             profilePanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
-            ImageIcon profileIcon = new ImageIcon(SidebarUtil.class.getResource("/images/default.png"));
+            // Load profile image with fallback
+            ImageIcon profileIcon = loadProfileImage();
             Image scaledImage = profileIcon.getImage().getScaledInstance(40, 40, Image.SCALE_SMOOTH);
             JLabel profileImage = new JLabel(new ImageIcon(scaledImage));
 
@@ -52,11 +59,11 @@ public class SidebarUtil {
             infoPanel.setBackground(SIDEBAR_COLOR);
 
             JLabel nameLabel = new JLabel(responsable.getPrenom() + " " + responsable.getNom());
-            nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            nameLabel.setFont(getEmojiSupportedFont(Font.BOLD, 14));
             nameLabel.setForeground(Color.WHITE);
 
             JLabel emailLabel = new JLabel(responsable.getEmail());
-            emailLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            emailLabel.setFont(getEmojiSupportedFont(Font.PLAIN, 12));
             emailLabel.setForeground(new Color(200, 200, 200));
 
             infoPanel.add(nameLabel);
@@ -99,6 +106,42 @@ public class SidebarUtil {
         return sidebar;
     }
 
+    private static ImageIcon loadProfileImage() {
+        try {
+            java.net.URL imageUrl = SidebarUtil.class.getResource("/images/default.png");
+            if (imageUrl == null) {
+                System.err.println("Warning: Profile image '/images/default.png' not found in resources.");
+                // Create a fallback 40x40 gray square
+                BufferedImage fallbackImage = new BufferedImage(40, 40, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2d = fallbackImage.createGraphics();
+                g2d.setColor(new Color(200, 200, 200));
+                g2d.fillRect(0, 0, 40, 40);
+                g2d.dispose();
+                return new ImageIcon(fallbackImage);
+            }
+            return new ImageIcon(imageUrl);
+        } catch (Exception e) {
+            System.err.println("Error loading profile image: " + e.getMessage());
+            BufferedImage fallbackImage = new BufferedImage(40, 40, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = fallbackImage.createGraphics();
+            g2d.setColor(new Color(200, 200, 200));
+            g2d.fillRect(0, 0, 40, 40);
+            g2d.dispose();
+            return new ImageIcon(fallbackImage);
+        }
+    }
+
+    private static Font getEmojiSupportedFont(int style, int size) {
+        String[] preferredFonts = { "Noto Emoji", "Segoe UI Emoji", "Segoe UI", "SansSerif" };
+        for (String fontName : preferredFonts) {
+            if (Arrays.stream(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames())
+                    .anyMatch(name -> name.equals(fontName))) {
+                return new Font(fontName, style, size);
+            }
+        }
+        return new Font("SansSerif", style, size);
+    }
+
     private static JButton createMenuButton(String text, boolean isActive, ActionListener action) {
         JButton button = new JButton(text) {
             @Override
@@ -116,7 +159,7 @@ public class SidebarUtil {
             }
         };
 
-        button.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        button.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         button.setForeground(Color.WHITE);
         button.setBackground(isActive ? PRIMARY_COLOR : SIDEBAR_COLOR);
         button.setFocusPainted(false);
@@ -162,18 +205,18 @@ public class SidebarUtil {
         gbc.anchor = GridBagConstraints.WEST;
 
         JLabel nameLabel = new JLabel("Nom: " + responsable.getPrenom() + " " + responsable.getNom());
-        nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        nameLabel.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         gbc.gridx = 0;
         gbc.gridy = 0;
         contentPanel.add(nameLabel, gbc);
 
         JLabel emailLabel = new JLabel("Email: " + responsable.getEmail());
-        emailLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        emailLabel.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         gbc.gridy = 1;
         contentPanel.add(emailLabel, gbc);
 
         JLabel idLabel = new JLabel("ID: " + responsable.getId());
-        idLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        idLabel.setFont(getEmojiSupportedFont(Font.PLAIN, 14));
         gbc.gridy = 2;
         contentPanel.add(idLabel, gbc);
 
@@ -198,7 +241,7 @@ public class SidebarUtil {
             }
         };
 
-        closeButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        closeButton.setFont(getEmojiSupportedFont(Font.BOLD, 14));
         closeButton.setForeground(Color.WHITE);
         closeButton.setContentAreaFilled(false);
         closeButton.setBorderPainted(false);

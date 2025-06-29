@@ -13,7 +13,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-// import org.springframework.http.client.ClientHttpRequestInterceptor;
 
 public class LoginFrame extends JPanel {
     private static final long serialVersionUID = 1L;
@@ -24,6 +23,8 @@ public class LoginFrame extends JPanel {
     private Color primaryColor = new Color(41, 128, 185);
     private Color secondaryColor = new Color(52, 152, 219);
     private Color backgroundColor = new Color(236, 240, 241);
+    private Color successColor = new Color(34, 197, 94);
+    private Color errorColor = new Color(239, 68, 68);
     private static final String LOGIN_API = "http://localhost:8080/api/responsables/login";
     private static final String PROFILE_API = "http://localhost:8080/api/responsables/me";
     private RestTemplate restTemplate;
@@ -34,7 +35,6 @@ public class LoginFrame extends JPanel {
         setLayout(new BorderLayout());
         setBackground(backgroundColor);
 
-        // Configure RestTemplate with logging interceptor
         restTemplate = new RestTemplate();
         restTemplate.getInterceptors().add((request, body, execution) -> {
             System.out.println("Request URL: " + request.getURI());
@@ -90,50 +90,49 @@ public class LoginFrame extends JPanel {
             String email = emailField.getText().trim();
             String password = new String(passwordField.getPassword());
             if (email.isEmpty() || password.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                showErrorNotification("Veuillez remplir tous les champs.");
                 return;
             }
             if (!email.matches("^[A-Za-z0-9+_.-]+@.+\\..+$")) {
-                JOptionPane.showMessageDialog(this, "Email invalide.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                showErrorNotification("Email invalide.");
                 return;
             }
             try {
-                // Prepare login request
                 LoginRequest request = new LoginRequest();
                 request.setEmail(email);
                 request.setMotDePasse(password);
 
-                // Set headers for login request
                 HttpHeaders loginHeaders = new HttpHeaders();
                 loginHeaders.setContentType(MediaType.APPLICATION_JSON);
                 HttpEntity<LoginRequest> loginEntity = new HttpEntity<>(request, loginHeaders);
 
-                // Perform login request
                 LoginResponse loginResponse = restTemplate.postForObject(LOGIN_API, loginEntity, LoginResponse.class);
                 if (loginResponse != null && loginResponse.getToken() != null) {
                     studentService.setJwtToken(loginResponse.getToken());
 
-                    // Prepare profile request with Authorization header
                     HttpHeaders profileHeaders = new HttpHeaders();
                     profileHeaders.set("Authorization", "Bearer " + loginResponse.getToken());
                     HttpEntity<Void> profileEntity = new HttpEntity<>(profileHeaders);
 
-                    // Perform profile request
-                    ResponsableResponse profile = restTemplate.exchange(PROFILE_API, HttpMethod.GET, profileEntity, ResponsableResponse.class).getBody();
+                    ResponsableResponse profile = restTemplate
+                            .exchange(PROFILE_API, HttpMethod.GET, profileEntity, ResponsableResponse.class).getBody();
                     if (profile != null) {
                         profile.setToken(loginResponse.getToken());
                         mainWindow.setCurrentResponsable(profile);
+                        System.out.println("Redirect to dashboard...");
                         mainWindow.showPanel("Dashboard");
+                        showSuccessNotification("Connexion réussie !");
                     } else {
-                        JOptionPane.showMessageDialog(this, "Impossible de récupérer le profil.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        showErrorNotification("Impossible de récupérer le profil.");
                     }
                 } else {
-                    JOptionPane.showMessageDialog(this, "Email ou mot de passe incorrect.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    showErrorNotification("Email ou mot de passe incorrect.");
                 }
             } catch (HttpClientErrorException ex) {
-                JOptionPane.showMessageDialog(this, "Email ou mot de passe incorrect: " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+                showErrorNotification("Email ou mot de passe incorrect: " + ex.getMessage());
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Erreur lors de la connexion : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+                System.out.println("Erreur lors de la connexion : " + ex.getMessage());
+                showErrorNotification("Erreur lors de la connexion : " + ex.getMessage());
             }
         });
 
@@ -188,7 +187,17 @@ public class LoginFrame extends JPanel {
     }
 
     private JButton createStyledButton(String text, Color bgColor) {
-        JButton button = new JButton(text);
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(getBackground());
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
         button.setFont(new Font("Segoe UI", Font.BOLD, 14));
         button.setForeground(Color.WHITE);
         button.setBackground(bgColor);
@@ -202,41 +211,148 @@ public class LoginFrame extends JPanel {
         return button;
     }
 
-    // Make LoginRequest a static inner class
+    private void showSuccessNotification(String message) {
+        JWindow toast = new JWindow();
+        toast.setAlwaysOnTop(true);
+
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(new Color(0, 0, 0, 100));
+                g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
+                g2d.setColor(successColor);
+                g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+                g2d.dispose();
+            }
+        };
+
+        panel.setLayout(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+
+        JLabel messageLabel = new JLabel("✅ " + message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+
+        panel.add(messageLabel, BorderLayout.CENTER);
+        toast.add(panel);
+        toast.pack();
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toast.setLocation(screenSize.width - toast.getWidth() - 30, 30);
+
+        toast.setVisible(true);
+
+        Timer timer = new Timer(3000, _ -> {
+            toast.setVisible(false);
+            toast.dispose();
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
+    private void showErrorNotification(String message) {
+        JWindow toast = new JWindow();
+        toast.setAlwaysOnTop(true);
+
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(new Color(0, 0, 0, 100));
+                g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
+                g2d.setColor(errorColor);
+                g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+                g2d.dispose();
+            }
+        };
+
+        panel.setLayout(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+
+        JLabel messageLabel = new JLabel("❌ " + message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+
+        panel.add(messageLabel, BorderLayout.CENTER);
+        toast.add(panel);
+        toast.pack();
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toast.setLocation(screenSize.width - toast.getWidth() - 30, 30);
+
+        toast.setVisible(true);
+
+        Timer timer = new Timer(3000, _ -> {
+            toast.setVisible(false);
+            toast.dispose();
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
     static class LoginRequest {
         private String email;
         private String motDePasse;
 
-        // No-args constructor for Jackson
-        public LoginRequest() {}
+        public LoginRequest() {
+        }
 
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-        public String getMotDePasse() { return motDePasse; }
-        public void setMotDePasse(String motDePasse) { this.motDePasse = motDePasse; }
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getMotDePasse() {
+            return motDePasse;
+        }
+
+        public void setMotDePasse(String motDePasse) {
+            this.motDePasse = motDePasse;
+        }
     }
 
-    // Make LoginResponse a static inner class
     static class LoginResponse {
         private String token;
         private String tokenType;
         private long expiresIn;
 
-        // No-args constructor for Jackson
-        public LoginResponse() {}
+        public LoginResponse() {
+        }
 
-        // Constructor for convenience
         public LoginResponse(String token, String tokenType, long expiresIn) {
             this.token = token;
             this.tokenType = tokenType;
             this.expiresIn = expiresIn;
         }
 
-        public String getToken() { return token; }
-        public void setToken(String token) { this.token = token; }
-        public String getTokenType() { return tokenType; }
-        public void setTokenType(String tokenType) { this.tokenType = tokenType; }
-        public long getExpiresIn() { return expiresIn; }
-        public void setExpiresIn(long expiresIn) { this.expiresIn = expiresIn; }
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
+        }
+
+        public String getTokenType() {
+            return tokenType;
+        }
+
+        public void setTokenType(String tokenType) {
+            this.tokenType = tokenType;
+        }
+
+        public long getExpiresIn() {
+            return expiresIn;
+        }
+
+        public void setExpiresIn(long expiresIn) {
+            this.expiresIn = expiresIn;
+        }
     }
 }

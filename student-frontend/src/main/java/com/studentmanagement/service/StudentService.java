@@ -384,6 +384,42 @@ public class StudentService {
         }
     }
 
+    public void updateStudentNotes(String etudiantId, String semestre, List<Note> notes) {
+        try {
+            for (Note note : notes) {
+                // Ensure the note belongs to the specified student and semester
+                if (note.getEtudiantId().equals(etudiantId) && note.getSemestre().equals(semestre)) {
+                    NoteDTO dto = new NoteDTO();
+                    dto.setEtudiantId(note.getEtudiantId());
+                    dto.setMatiereId(note.getMatiereId());
+                    dto.setValeur(note.getValeur());
+                    dto.setSemestre(note.getSemestre());
+                    dto.setAnnee(note.getAnnee());
+                    HttpEntity<NoteDTO> request = new HttpEntity<>(dto, createHeaders());
+                    if (note.getId() != null) {
+                        // Update existing note
+                        restTemplate.put(NOTES_API + "/" + note.getId(), request);
+                    } else {
+                        // Add new note
+                        restTemplate.postForObject(NOTES_API, request, NoteDTO.class);
+                    }
+                }
+            }
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ApiException("L'étudiant ou la note spécifiée n'existe pas.");
+            } else if (ex.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                throw new ApiException("Les données des notes sont invalides.");
+            } else if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            } else {
+                throw new ApiException("Erreur lors de la mise à jour des notes.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
     public List<StudentAverageDTO> getStudentAverages(String semestre, String annee) {
         try {
             StringBuilder url = new StringBuilder(NOTES_API + "/averages");

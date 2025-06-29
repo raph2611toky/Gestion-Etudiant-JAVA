@@ -8,6 +8,9 @@ import com.studentmanagement.ui.common.MainWindow;
 import com.studentmanagement.model.ResponsableResponse;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 public class RegisterFrame extends JPanel {
     private static final long serialVersionUID = 1L;
@@ -17,6 +20,8 @@ public class RegisterFrame extends JPanel {
     private Color primaryColor = new Color(41, 128, 185);
     private Color secondaryColor = new Color(52, 152, 219);
     private Color backgroundColor = new Color(236, 240, 241);
+    private Color successColor = new Color(34, 197, 94);
+    private Color errorColor = new Color(239, 68, 68);
     private static final String REGISTER_API = "http://localhost:8080/api/responsables/register";
     private RestTemplate restTemplate = new RestTemplate();
 
@@ -24,6 +29,13 @@ public class RegisterFrame extends JPanel {
         this.mainWindow = mainWindow;
         setLayout(new BorderLayout());
         setBackground(backgroundColor);
+
+        restTemplate.getInterceptors().add((request, body, execution) -> {
+            System.out.println("Request URL: " + request.getURI());
+            System.out.println("Request Method: " + request.getMethod());
+            System.out.println("Request Headers: " + request.getHeaders());
+            return execution.execute(request, body);
+        });
 
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
@@ -71,7 +83,7 @@ public class RegisterFrame extends JPanel {
         buttonPanel.setMaximumSize(new Dimension(350, 40));
 
         JButton registerButton = createStyledButton("S'inscrire", primaryColor);
-        JButton backButton = createStyledButton("Retour", new Color(52, 73, 94));
+        JButton loginButton = createStyledButton("Se connecter", new Color(52, 73, 94));
 
         registerButton.addActionListener(_ -> {
             String prenom = prenomField.getText().trim();
@@ -80,53 +92,51 @@ public class RegisterFrame extends JPanel {
             String password = new String(passwordField.getPassword());
             String confirmPassword = new String(confirmPasswordField.getPassword());
 
-            if (prenom.isEmpty() || nom.isEmpty() || email.isEmpty() || password.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.", "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
+            if (prenom.isEmpty() || nom.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+                showErrorNotification("Veuillez remplir tous les champs.");
                 return;
             }
+
             if (!email.matches("^[A-Za-z0-9+_.-]+@.+\\..+$")) {
-                JOptionPane.showMessageDialog(this, "Email invalide.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                showErrorNotification("Email invalide.");
                 return;
             }
+
             if (!password.equals(confirmPassword)) {
-                JOptionPane.showMessageDialog(this, "Les mots de passe ne correspondent pas.", "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
+                showErrorNotification("Les mots de passe ne correspondent pas.");
                 return;
             }
-            if (password.length() < 6) {
-                JOptionPane.showMessageDialog(this, "Le mot de passe doit contenir au moins 6 caractères.", "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
-                return;
-            }
+
             try {
-                ResponsableRequest request = new ResponsableRequest();
+                RegisterRequest request = new RegisterRequest();
                 request.setPrenom(prenom);
                 request.setNom(nom);
                 request.setEmail(email);
                 request.setMotDePasse(password);
-                ResponsableResponse response = restTemplate.postForObject(REGISTER_API, request,
-                        ResponsableResponse.class);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<RegisterRequest> entity = new HttpEntity<>(request, headers);
+
+                ResponsableResponse response = restTemplate.postForObject(REGISTER_API, entity, ResponsableResponse.class);
                 if (response != null) {
+                    showSuccessNotification("Inscription réussie ! Veuillez vous connecter.");
                     mainWindow.showPanel("Login");
-                    JOptionPane.showMessageDialog(this, "Inscription réussie ! Veuillez vous connecter.");
                 } else {
-                    JOptionPane.showMessageDialog(this, "Erreur lors de l'inscription.", "Erreur",
-                            JOptionPane.ERROR_MESSAGE);
+                    showErrorNotification("Erreur lors de l'inscription.");
                 }
             } catch (HttpClientErrorException ex) {
-                JOptionPane.showMessageDialog(this, "Cet email est déjà utilisé.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                showErrorNotification("Erreur lors de l'inscription : " + ex.getMessage());
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Erreur lors de l'inscription : " + ex.getMessage(), "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
+                showErrorNotification("Erreur inattendue : " + ex.getMessage());
             }
         });
 
-        backButton.addActionListener(_ -> mainWindow.showPanel("Login"));
+        loginButton.addActionListener(_ -> mainWindow.showPanel("Login"));
 
         buttonPanel.add(registerButton);
         buttonPanel.add(Box.createRigidArea(new Dimension(15, 0)));
-        buttonPanel.add(backButton);
+        buttonPanel.add(loginButton);
 
         panel.add(buttonPanel);
         return panel;
@@ -173,7 +183,17 @@ public class RegisterFrame extends JPanel {
     }
 
     private JButton createStyledButton(String text, Color bgColor) {
-        JButton button = new JButton(text);
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(getBackground());
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
         button.setFont(new Font("Segoe UI", Font.BOLD, 14));
         button.setForeground(Color.WHITE);
         button.setBackground(bgColor);
@@ -187,42 +207,103 @@ public class RegisterFrame extends JPanel {
         return button;
     }
 
-    class ResponsableRequest {
+    private void showSuccessNotification(String message) {
+        JWindow toast = new JWindow();
+        toast.setAlwaysOnTop(true);
+
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(new Color(0, 0, 0, 100));
+                g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
+                g2d.setColor(successColor);
+                g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+                g2d.dispose();
+            }
+        };
+
+        panel.setLayout(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+
+        JLabel messageLabel = new JLabel("✅ " + message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+
+        panel.add(messageLabel, BorderLayout.CENTER);
+        toast.add(panel);
+        toast.pack();
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toast.setLocation(screenSize.width - toast.getWidth() - 30, 30);
+
+        toast.setVisible(true);
+
+        Timer timer = new Timer(3000, _ -> {
+            toast.setVisible(false);
+            toast.dispose();
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
+    private void showErrorNotification(String message) {
+        JWindow toast = new JWindow();
+        toast.setAlwaysOnTop(true);
+
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setColor(new Color(0, 0, 0, 100));
+                g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
+                g2d.setColor(errorColor);
+                g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+                g2d.dispose();
+            }
+        };
+
+        panel.setLayout(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+
+        JLabel messageLabel = new JLabel("❌ " + message);
+        messageLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        messageLabel.setForeground(Color.WHITE);
+
+        panel.add(messageLabel, BorderLayout.CENTER);
+        toast.add(panel);
+        toast.pack();
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        toast.setLocation(screenSize.width - toast.getWidth() - 30, 30);
+
+        toast.setVisible(true);
+
+        Timer timer = new Timer(3000, _ -> {
+            toast.setVisible(false);
+            toast.dispose();
+        });
+        timer.setRepeats(false);
+        timer.start();
+    }
+
+    static class RegisterRequest {
         private String prenom;
         private String nom;
         private String email;
         private String motDePasse;
 
-        public String getPrenom() {
-            return prenom;
-        }
+        public RegisterRequest() {}
 
-        public void setPrenom(String prenom) {
-            this.prenom = prenom;
-        }
-
-        public String getNom() {
-            return nom;
-        }
-
-        public void setNom(String nom) {
-            this.nom = nom;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getMotDePasse() {
-            return motDePasse;
-        }
-
-        public void setMotDePasse(String motDePasse) {
-            this.motDePasse = motDePasse;
-        }
+        public String getPrenom() { return prenom; }
+        public void setPrenom(String prenom) { this.prenom = prenom; }
+        public String getNom() { return nom; }
+        public void setNom(String nom) { this.nom = nom; }
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getMotDePasse() { return motDePasse; }
+        public void setMotDePasse(String motDePasse) { this.motDePasse = motDePasse; }
     }
 }

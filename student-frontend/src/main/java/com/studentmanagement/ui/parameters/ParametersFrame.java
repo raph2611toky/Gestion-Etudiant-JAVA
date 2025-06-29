@@ -38,7 +38,7 @@ public class ParametersFrame extends JPanel {
 
     // Palette de couleurs modernes
     private static final Color PRIMARY_COLOR = new Color(99, 102, 241);
-    private static final Color SECONDARY_COLOR = new Color(139, 92, 246);
+    // private static final Color SECONDARY_COLOR = new Color(139, 92, 246);
     private static final Color SUCCESS_COLOR = new Color(34, 197, 94);
     private static final Color WARNING_COLOR = new Color(251, 146, 60);
     private static final Color ERROR_COLOR = new Color(239, 68, 68);
@@ -174,7 +174,7 @@ public class ParametersFrame extends JPanel {
         titleLabel.setForeground(TEXT_PRIMARY);
 
         JButton addButton = ModernComponents.createPrimaryButton("➕ Ajouter " + entityName);
-        addButton.addActionListener(e -> addAction.run());
+        addButton.addActionListener(_ -> addAction.run());
 
         header.add(titleLabel, BorderLayout.WEST);
         header.add(addButton, BorderLayout.EAST);
@@ -222,7 +222,7 @@ public class ParametersFrame extends JPanel {
 
         mentionComboBox = ModernComponents.createModernComboBox();
         mentionComboBox.setPreferredSize(new Dimension(200, 40));
-        mentionComboBox.addActionListener(e -> loadParcours());
+        mentionComboBox.addActionListener(_ -> loadParcours());
 
         filterPanel.add(mentionLabel);
         filterPanel.add(mentionComboBox);
@@ -231,7 +231,7 @@ public class ParametersFrame extends JPanel {
         leftPanel.add(filterPanel, BorderLayout.SOUTH);
 
         addParcoursButton = ModernComponents.createPrimaryButton("➕ Ajouter Parcours");
-        addParcoursButton.addActionListener(e -> addParcours());
+        addParcoursButton.addActionListener(_ -> addParcours());
 
         header.add(leftPanel, BorderLayout.WEST);
         header.add(addParcoursButton, BorderLayout.EAST);
@@ -279,7 +279,7 @@ public class ParametersFrame extends JPanel {
 
         niveauComboBox = ModernComponents.createModernComboBox();
         niveauComboBox.setPreferredSize(new Dimension(200, 40));
-        niveauComboBox.addActionListener(e -> loadMatieres());
+        niveauComboBox.addActionListener(_ -> loadMatieres());
 
         filterPanel.add(niveauLabel);
         filterPanel.add(niveauComboBox);
@@ -288,7 +288,7 @@ public class ParametersFrame extends JPanel {
         leftPanel.add(filterPanel, BorderLayout.SOUTH);
 
         addMatiereButton = ModernComponents.createPrimaryButton("➕ Ajouter Matière");
-        addMatiereButton.addActionListener(e -> addMatiere());
+        addMatiereButton.addActionListener(_ -> addMatiere());
 
         header.add(leftPanel, BorderLayout.WEST);
         header.add(addMatiereButton, BorderLayout.EAST);
@@ -410,7 +410,7 @@ public class ParametersFrame extends JPanel {
 
     // Opérations CRUD
     private void addMention() {
-        showFormDialog("Ajouter une Mention", null, null, (nom, description, refComboBox) -> {
+        showFormDialog("Ajouter une Mention", null, null, (nom, description, _) -> {
             if (validateBasicFields(nom, description)) {
                 Mention mention = new Mention();
                 mention.setNom(nom);
@@ -426,7 +426,7 @@ public class ParametersFrame extends JPanel {
         int selectedRow = getSelectedRow(mentionTableModel);
         if (selectedRow >= 0 && selectedRow < allMentions.size()) {
             Mention mention = allMentions.get(selectedRow);
-            showFormDialog("Modifier la Mention", mention.getNom(), mention.getDescription(), (nom, description, refComboBox) -> {
+            showFormDialog("Modifier la Mention", mention.getNom(), mention.getDescription(), (nom, description, _) -> {
                 if (validateBasicFields(nom, description)) {
                     mention.setNom(nom);
                     mention.setDescription(description);
@@ -439,7 +439,7 @@ public class ParametersFrame extends JPanel {
     }
 
     private void addNiveau() {
-        showFormDialog("Ajouter un Niveau", null, null, (nom, description, refComboBox) -> {
+        showFormDialog("Ajouter un Niveau", null, null, (nom, description, _) -> {
             if (validateBasicFields(nom, description)) {
                 Niveau niveau = new Niveau();
                 niveau.setNom(nom);
@@ -455,7 +455,7 @@ public class ParametersFrame extends JPanel {
         int selectedRow = getSelectedRow(niveauTableModel);
         if (selectedRow >= 0 && selectedRow < allNiveaux.size()) {
             Niveau niveau = allNiveaux.get(selectedRow);
-            showFormDialog("Modifier le Niveau", niveau.getNom(), niveau.getDescription(), (nom, description, refComboBox) -> {
+            showFormDialog("Modifier le Niveau", niveau.getNom(), niveau.getDescription(), (nom, description, _) -> {
                 if (validateBasicFields(nom, description)) {
                     niveau.setNom(nom);
                     niveau.setDescription(description);
@@ -602,13 +602,13 @@ public class ParametersFrame extends JPanel {
         JButton saveButton = ModernComponents.createPrimaryButton("💾 Enregistrer");
         JButton cancelButton = ModernComponents.createSecondaryButton("❌ Annuler");
 
-        saveButton.addActionListener(e -> {
+        saveButton.addActionListener(_ -> {
             if (validateAndSaveMatiere(dialog, nomField, categorieField, coefficientField, niveauCombo, matiere, isEdit)) {
                 dialog.dispose();
             }
         });
 
-        cancelButton.addActionListener(e -> dialog.dispose());
+        cancelButton.addActionListener(_ -> dialog.dispose());
 
         buttonPanel.add(saveButton);
         buttonPanel.add(cancelButton);
@@ -888,7 +888,7 @@ public class ParametersFrame extends JPanel {
         JButton cancelButton = ModernComponents.createSecondaryButton("❌ Annuler");
 
         JComboBox<Mention> finalRefComboBox = refComboBox;
-        saveButton.addActionListener(e -> {
+        saveButton.addActionListener(_ -> {
             String nomText = nomField.getText().trim();
             String descriptionText = descriptionField.getText().trim();
 
@@ -903,7 +903,7 @@ public class ParametersFrame extends JPanel {
             }
         });
 
-        cancelButton.addActionListener(e -> dialog.dispose());
+        cancelButton.addActionListener(_ -> dialog.dispose());
 
         buttonPanel.add(saveButton);
         buttonPanel.add(cancelButton);
@@ -1066,12 +1066,12 @@ public class ParametersFrame extends JPanel {
         JButton confirmButton = ModernComponents.createErrorButton("🗑️ Supprimer");
         JButton cancelButton = ModernComponents.createSecondaryButton("❌ Annuler");
 
-        confirmButton.addActionListener(e -> {
+        confirmButton.addActionListener(_ -> {
             dialog.dispose();
             onConfirm.run();
         });
 
-        cancelButton.addActionListener(e -> dialog.dispose());
+        cancelButton.addActionListener(_ -> dialog.dispose());
 
         buttonPanel.add(confirmButton);
         buttonPanel.add(cancelButton);
@@ -1128,7 +1128,7 @@ public class ParametersFrame extends JPanel {
 
         toast.setVisible(true);
 
-        Timer timer = new Timer(3000, e -> {
+        Timer timer = new Timer(3000, _ -> {
             toast.setVisible(false);
             toast.dispose();
         });
@@ -1244,12 +1244,12 @@ public class ParametersFrame extends JPanel {
             editButton = createActionButton("✏️", WARNING_COLOR);
             deleteButton = createActionButton("🗑️", ERROR_COLOR);
 
-            editButton.addActionListener(e -> {
+            editButton.addActionListener(_ -> {
                 fireEditingStopped();
                 editAction.run();
             });
 
-            deleteButton.addActionListener(e -> {
+            deleteButton.addActionListener(_ -> {
                 fireEditingStopped();
                 deleteAction.run();
             });

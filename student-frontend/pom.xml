@@ -36,6 +36,11 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.18.1</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+            <version>6.0.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -66,5 +71,14 @@
                 </configuration>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>**/*.ttf</include>
+                    <include>**/*.png</include>
+                </includes>
+            </resource>
+        </resources>
     </build>
 </project>
