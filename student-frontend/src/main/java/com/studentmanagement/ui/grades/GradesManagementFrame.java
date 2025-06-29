@@ -14,6 +14,9 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.border.AbstractBorder;
+import javax.swing.plaf.basic.BasicComboPopup;
+import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.plaf.basic.ComboPopup;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -21,6 +24,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.regex.Pattern;
 
 public class GradesManagementFrame extends JPanel {
@@ -39,7 +43,10 @@ public class GradesManagementFrame extends JPanel {
     private List<Etudiant> allStudents;
     private List<Matiere> allMatieres;
     private List<Niveau> allNiveaux;
-    private JDialog currentDialog; // Pour pouvoir fermer le dialog
+    private JDialog currentDialog;
+    
+    // ✅ CORRECTION: Stocker les statistiques pour accéder aux niveauId
+    private List<ClassStatisticsDTO> currentClassStats = new ArrayList<>();
 
     // Palette de couleurs modernes ultra-améliorée
     private static final Color PRIMARY_COLOR = new Color(79, 70, 229);
@@ -424,7 +431,7 @@ public class GradesManagementFrame extends JPanel {
 
         studentComboBox = createUltraModernComboBox();
         studentComboBox.setPreferredSize(new Dimension(280, 45));
-        studentComboBox.addActionListener(e -> loadGrades());
+        studentComboBox.addActionListener(_ -> loadGrades());
 
         filterPanel.add(studentLabel);
         filterPanel.add(Box.createHorizontalStrut(10));
@@ -435,10 +442,10 @@ public class GradesManagementFrame extends JPanel {
         actionPanel.setOpaque(false);
 
         JButton addButton = createUltraModernButton("Ajouter une Note", IconType.PLUS, PRIMARY_COLOR, true);
-        addButton.addActionListener(e -> showGradeFormDialog(null));
+        addButton.addActionListener(_ -> showGradeFormDialog(null));
 
         JButton refreshButton = createUltraModernButton("Actualiser", IconType.REFRESH, SECONDARY_COLOR, false);
-        refreshButton.addActionListener(e -> {
+        refreshButton.addActionListener(_ -> {
             loadData();
             loadGrades();
             showSuccessNotification("Données actualisées avec succès!");
@@ -453,6 +460,7 @@ public class GradesManagementFrame extends JPanel {
         return header;
     }
 
+    // Amélioration 1: ComboBox avec interface améliorée et sans bordures intérieures
     private JComboBox<Etudiant> createUltraModernComboBox() {
         JComboBox<Etudiant> comboBox = new JComboBox<Etudiant>() {
             @Override
@@ -479,9 +487,94 @@ public class GradesManagementFrame extends JPanel {
         comboBox.setFont(getModernFont(Font.PLAIN, 14));
         comboBox.setBackground(CARD_COLOR);
         comboBox.setForeground(TEXT_PRIMARY);
-        comboBox.setBorder(BorderFactory.createCompoundBorder(
-            new UltraModernBorder(BORDER_COLOR),
-            BorderFactory.createEmptyBorder(10, 15, 10, 15)));
+        // Enlever la bordure intérieure - seulement padding
+        comboBox.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+
+        // UI personnalisée pour améliorer l'apparence
+        comboBox.setUI(new BasicComboBoxUI() {
+            @Override
+            protected ComboPopup createPopup() {
+                return new BasicComboPopup(comboBox) {
+                    @Override
+                    protected void paintComponent(Graphics g) {
+                        Graphics2D g2d = (Graphics2D) g.create();
+                        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        
+                        // Ombre pour la popup
+                        g2d.setColor(new Color(0, 0, 0, 30));
+                        g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
+                        
+                        // Fond avec gradient
+                        GradientPaint gradient = new GradientPaint(
+                            0, 0, CARD_COLOR,
+                            0, getHeight(), new Color(248, 250, 252)
+                        );
+                        g2d.setPaint(gradient);
+                        g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+                        
+                        // Bordure
+                        g2d.setColor(PRIMARY_COLOR);
+                        g2d.setStroke(new BasicStroke(2));
+                        g2d.drawRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 12, 12);
+                        g2d.dispose();
+                        super.paintComponent(g);
+                    }
+                };
+            }
+
+            @Override
+            protected JButton createArrowButton() {
+                JButton button = new JButton() {
+                    @Override
+                    public void paintComponent(Graphics g) {
+                        Graphics2D g2d = (Graphics2D) g.create();
+                        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        
+                        // Dessiner la flèche
+                        g2d.setColor(TEXT_SECONDARY);
+                        g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                        
+                        int centerX = getWidth() / 2;
+                        int centerY = getHeight() / 2;
+                        
+                        g2d.drawLine(centerX - 4, centerY - 2, centerX, centerY + 2);
+                        g2d.drawLine(centerX, centerY + 2, centerX + 4, centerY - 2);
+                        g2d.dispose();
+                    }
+                };
+                button.setBorder(BorderFactory.createEmptyBorder());
+                button.setContentAreaFilled(false);
+                button.setFocusPainted(false);
+                return button;
+            }
+        });
+
+        // Améliorer le renderer pour les éléments de la liste
+        comboBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                
+                setFont(getModernFont(Font.PLAIN, 14));
+                setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+                
+                if (isSelected) {
+                    setBackground(PRIMARY_COLOR);
+                    setForeground(Color.WHITE);
+                } else {
+                    setBackground(CARD_COLOR);
+                    setForeground(TEXT_PRIMARY);
+                }
+                
+                // Effet hover
+                if (index >= 0 && !isSelected) {
+                    setBackground(new Color(248, 250, 252));
+                }
+                
+                return this;
+            }
+        });
 
         return comboBox;
     }
@@ -700,6 +793,7 @@ public class GradesManagementFrame extends JPanel {
         return table;
     }
 
+    // Amélioration 2: ScrollPane avec scrollbar plus belle
     private JScrollPane createUltraModernScrollPane(Component component) {
         JScrollPane scrollPane = new JScrollPane(component) {
             @Override
@@ -720,6 +814,77 @@ public class GradesManagementFrame extends JPanel {
         scrollPane.setBackground(new Color(0, 0, 0, 0));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.setOpaque(false);
+
+        // Scrollbar verticale améliorée
+        scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected void configureScrollBarColors() {
+                this.thumbColor = new Color(156, 163, 175); // Gris plus visible
+                this.trackColor = new Color(243, 244, 246); // Fond plus clair
+            }
+
+            @Override
+            protected JButton createDecreaseButton(int orientation) {
+                return createZeroButton();
+            }
+
+            @Override
+            protected JButton createIncreaseButton(int orientation) {
+                return createZeroButton();
+            }
+
+            private JButton createZeroButton() {
+                JButton button = new JButton();
+                button.setPreferredSize(new Dimension(0, 0));
+                button.setMinimumSize(new Dimension(0, 0));
+                button.setMaximumSize(new Dimension(0, 0));
+                return button;
+            }
+
+            @Override
+            protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                // Ombre pour le thumb
+                g2d.setColor(new Color(0, 0, 0, 30));
+                g2d.fillRoundRect(thumbBounds.x + 1, thumbBounds.y + 1,
+                        thumbBounds.width - 2, thumbBounds.height - 2, 8, 8);
+                
+                // Gradient pour le thumb
+                GradientPaint gradient = new GradientPaint(
+                    thumbBounds.x, thumbBounds.y, new Color(156, 163, 175),
+                    thumbBounds.x + thumbBounds.width, thumbBounds.y, new Color(107, 114, 128)
+                );
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(thumbBounds.x, thumbBounds.y,
+                        thumbBounds.width - 1, thumbBounds.height - 1, 8, 8);
+                
+                // Highlight
+                g2d.setColor(new Color(255, 255, 255, 60));
+                g2d.fillRoundRect(thumbBounds.x + 1, thumbBounds.y + 1,
+                        thumbBounds.width - 3, thumbBounds.height / 3, 6, 6);
+                
+                g2d.dispose();
+            }
+
+            @Override
+            protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                // Track avec gradient
+                GradientPaint gradient = new GradientPaint(
+                    trackBounds.x, trackBounds.y, new Color(248, 250, 252),
+                    trackBounds.x + trackBounds.width, trackBounds.y, new Color(241, 245, 249)
+                );
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(trackBounds.x, trackBounds.y,
+                        trackBounds.width, trackBounds.height, 8, 8);
+                
+                g2d.dispose();
+            }
+        });
 
         return scrollPane;
     }
@@ -752,8 +917,9 @@ public class GradesManagementFrame extends JPanel {
         return statsPanel;
     }
 
+    // Amélioration 4: Alignement horizontal du bouton avec les filtres
     private JPanel createUltraModernStatsFilterPanel() {
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0)) {
+        JPanel filterPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
@@ -774,6 +940,9 @@ public class GradesManagementFrame extends JPanel {
                 g2d.dispose();
             }
         };
+        
+        // Utiliser un FlowLayout pour aligner horizontalement tous les éléments
+        filterPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 20, 0));
         filterPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
 
         JLabel semestreLabel = new JLabel("Semestre");
@@ -799,18 +968,22 @@ public class GradesManagementFrame extends JPanel {
         anneeComboBox.addItem("2024-2025");
         anneeComboBox.addItem("2025-2026");
 
+        // Aligner le bouton à la même hauteur que les ComboBox
         JButton loadStatsButton = createUltraModernButton("Analyser les Données", IconType.CHART, SECONDARY_COLOR, false);
-        loadStatsButton.addActionListener(e -> {
+        // Même hauteur que les ComboBox
+        loadStatsButton.setPreferredSize(new Dimension(180, 40));
+        loadStatsButton.addActionListener(_ -> {
             loadStatistics();
             showSuccessNotification("Statistiques mises à jour!");
         });
 
+        // Ajouter tous les éléments sur la même ligne
         filterPanel.add(semestreLabel);
         filterPanel.add(semestreComboBox);
-        filterPanel.add(Box.createHorizontalStrut(30));
+        filterPanel.add(Box.createHorizontalStrut(20)); // Espacement
         filterPanel.add(anneeLabel);
         filterPanel.add(anneeComboBox);
-        filterPanel.add(Box.createHorizontalStrut(30));
+        filterPanel.add(Box.createHorizontalStrut(20)); // Espacement
         filterPanel.add(loadStatsButton);
 
         return filterPanel;
@@ -843,9 +1016,89 @@ public class GradesManagementFrame extends JPanel {
         comboBox.setBackground(CARD_COLOR);
         comboBox.setForeground(TEXT_PRIMARY);
         comboBox.setPreferredSize(new Dimension(150, 40));
-        comboBox.setBorder(BorderFactory.createCompoundBorder(
-            new UltraModernBorder(BORDER_COLOR),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        // Enlever la bordure intérieure - seulement padding
+        comboBox.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+
+        // UI personnalisée similaire à createUltraModernComboBox
+        comboBox.setUI(new BasicComboBoxUI() {
+            @Override
+            protected ComboPopup createPopup() {
+                return new BasicComboPopup(comboBox) {
+                    @Override
+                    protected void paintComponent(Graphics g) {
+                        Graphics2D g2d = (Graphics2D) g.create();
+                        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        
+                        // Ombre pour la popup
+                        g2d.setColor(new Color(0, 0, 0, 30));
+                        g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
+                        
+                        // Fond avec gradient
+                        GradientPaint gradient = new GradientPaint(
+                            0, 0, CARD_COLOR,
+                            0, getHeight(), new Color(248, 250, 252)
+                        );
+                        g2d.setPaint(gradient);
+                        g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
+                        
+                        // Bordure
+                        g2d.setColor(ACCENT_BLUE);
+                        g2d.setStroke(new BasicStroke(2));
+                        g2d.drawRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 12, 12);
+                        g2d.dispose();
+                        super.paintComponent(g);
+                    }
+                };
+            }
+
+            @Override
+            protected JButton createArrowButton() {
+                JButton button = new JButton() {
+                    @Override
+                    public void paintComponent(Graphics g) {
+                        Graphics2D g2d = (Graphics2D) g.create();
+                        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        
+                        // Dessiner la flèche
+                        g2d.setColor(TEXT_SECONDARY);
+                        g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                        
+                        int centerX = getWidth() / 2;
+                        int centerY = getHeight() / 2;
+                        
+                        g2d.drawLine(centerX - 4, centerY - 2, centerX, centerY + 2);
+                        g2d.drawLine(centerX, centerY + 2, centerX + 4, centerY - 2);
+                        g2d.dispose();
+                    }
+                };
+                button.setBorder(BorderFactory.createEmptyBorder());
+                button.setContentAreaFilled(false);
+                button.setFocusPainted(false);
+                return button;
+            }
+        });
+
+        // Améliorer le renderer
+        comboBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                
+                setFont(getModernFont(Font.PLAIN, 14));
+                setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+                
+                if (isSelected) {
+                    setBackground(ACCENT_BLUE);
+                    setForeground(Color.WHITE);
+                } else {
+                    setBackground(CARD_COLOR);
+                    setForeground(TEXT_PRIMARY);
+                }
+                
+                return this;
+            }
+        });
 
         return comboBox;
     }
@@ -1060,7 +1313,7 @@ public class GradesManagementFrame extends JPanel {
         closeButton.setFocusPainted(false);
         closeButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         closeButton.setPreferredSize(new Dimension(36, 36));
-        closeButton.addActionListener(e -> currentDialog.dispose());
+        closeButton.addActionListener(_ -> currentDialog.dispose());
 
         titleRow.add(leftPanel, BorderLayout.WEST);
         titleRow.add(closeButton, BorderLayout.EAST);
@@ -1302,9 +1555,9 @@ public class GradesManagementFrame extends JPanel {
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(35, 0, 0, 0));
 
         JButton saveButton = createUltraModernButton("Enregistrer", IconType.SAVE, PRIMARY_COLOR, true);
-        JButton cancelButton = createUltraModernButton("Annuler", IconType.CANCEL, ERROR_COLOR, true); // Couleur rouge
+        JButton cancelButton = createUltraModernButton("Annuler", IconType.CANCEL, ERROR_COLOR, true);
 
-        saveButton.addActionListener(e -> {
+        saveButton.addActionListener(_ -> {
             // Logique de sauvegarde ici
             if (validateAndSaveGrade(note, isEdit)) {
                 currentDialog.dispose();
@@ -1312,7 +1565,7 @@ public class GradesManagementFrame extends JPanel {
         });
 
         // Correction du bouton annuler
-        cancelButton.addActionListener(e -> {
+        cancelButton.addActionListener(_ -> {
             if (currentDialog != null) {
                 currentDialog.dispose();
             }
@@ -1423,12 +1676,12 @@ public class GradesManagementFrame extends JPanel {
             editButton = createUltraActionButton(IconType.EDIT, WARNING_COLOR);
             deleteButton = createUltraActionButton(IconType.DELETE, ERROR_COLOR);
 
-            editButton.addActionListener(e -> {
+            editButton.addActionListener(_ -> {
                 fireEditingStopped();
                 editAction.run();
             });
 
-            deleteButton.addActionListener(e -> {
+            deleteButton.addActionListener(_ -> {
                 fireEditingStopped();
                 deleteAction.run();
             });
@@ -1571,7 +1824,7 @@ public class GradesManagementFrame extends JPanel {
             panel.setOpaque(false);
 
             button = createUltraDetailsButton();
-            button.addActionListener(e -> {
+            button.addActionListener(_ -> {
                 fireEditingStopped();
                 action.run();
             });
@@ -1716,6 +1969,7 @@ public class GradesManagementFrame extends JPanel {
         }
     }
 
+    // ✅ CORRECTION: Méthode loadStatistics corrigée
     private void loadStatistics() {
         String semestre = (String) semestreComboBox.getSelectedItem();
         String annee = (String) anneeComboBox.getSelectedItem();
@@ -1739,17 +1993,17 @@ public class GradesManagementFrame extends JPanel {
                 });
             }
 
-            // Load class statistics
-            List<ClassStatisticsDTO> statsList = studentService.getAllClassStatistics(semestre, annee);
+            // ✅ CORRECTION: Stocker les statistiques et utiliser l'index correct
+            currentClassStats = studentService.getAllClassStatistics(semestre, annee);
             classStatsTableModel.setRowCount(0);
 
-            for (ClassStatisticsDTO stats : statsList) {
+            for (ClassStatisticsDTO stats : currentClassStats) {
                 classStatsTableModel.addRow(new Object[]{
                     stats.getNiveauNom(),
                     String.format("%.2f", stats.getMoyenneGenerale()),
                     String.format("%.2f", stats.getMaxMoyenne()),
                     String.format("%.2f", stats.getMinMoyenne()),
-                    stats.getNiveauId()
+                    "Détails" // Texte du bouton, pas le niveauId
                 });
             }
         } catch (ApiException ex) {
@@ -1784,6 +2038,7 @@ public class GradesManagementFrame extends JPanel {
         }
     }
 
+    // Amélioration 3: Dialog de suppression personnalisé
     private void deleteGrade() {
         int selectedRow = gradesTable.getSelectedRow();
         if (selectedRow >= 0) {
@@ -1792,17 +2047,15 @@ public class GradesManagementFrame extends JPanel {
                 try {
                     List<Note> notes = studentService.getNotesByEtudiant(selectedStudent.getId());
                     if (selectedRow < notes.size()) {
-                        int confirm = JOptionPane.showConfirmDialog(this,
-                                "Êtes-vous sûr de vouloir supprimer cette note ?",
-                                "Confirmer la suppression",
-                                JOptionPane.YES_NO_OPTION,
-                                JOptionPane.QUESTION_MESSAGE);
-
-                        if (confirm == JOptionPane.YES_OPTION) {
-                            studentService.deleteNote(notes.get(selectedRow).getId());
-                            loadGrades();
-                            showSuccessNotification("Note supprimée avec succès!");
-                        }
+                        showCustomDeleteConfirmDialog(() -> {
+                            try {
+                                studentService.deleteNote(notes.get(selectedRow).getId());
+                                loadGrades();
+                                showSuccessNotification("Note supprimée avec succès!");
+                            } catch (ApiException ex) {
+                                showErrorNotification("Erreur lors de la suppression: " + ex.getMessage());
+                            }
+                        });
                     }
                 } catch (ApiException ex) {
                     showErrorNotification("Erreur lors de la suppression: " + ex.getMessage());
@@ -1811,6 +2064,137 @@ public class GradesManagementFrame extends JPanel {
         }
     }
 
+    private void showCustomDeleteConfirmDialog(Runnable onConfirm) {
+        JDialog confirmDialog = new UltraModernDialog(
+            (Frame) SwingUtilities.getWindowAncestor(this),
+            "Confirmation de suppression"
+        );
+        confirmDialog.setSize(480, 280);
+        confirmDialog.setLocationRelativeTo(this);
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(CARD_COLOR);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
+
+        // En-tête avec icône d'avertissement
+        JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        headerPanel.setBackground(CARD_COLOR);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+
+        JLabel warningIcon = new JLabel(createVectorIcon(IconType.DELETE, 48, ERROR_COLOR));
+        JLabel titleLabel = new JLabel("Êtes-vous sûr ?");
+        titleLabel.setFont(getModernFont(Font.BOLD, 24));
+        titleLabel.setForeground(TEXT_PRIMARY);
+
+        headerPanel.add(warningIcon);
+        headerPanel.add(titleLabel);
+
+        // Message
+        JLabel messageLabel = new JLabel("<html><center>Cette action est irréversible.<br/>La note sera définitivement supprimée.</center></html>");
+        messageLabel.setFont(getModernFont(Font.PLAIN, 16));
+        messageLabel.setForeground(TEXT_SECONDARY);
+        messageLabel.setHorizontalAlignment(JLabel.CENTER);
+        messageLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+
+        // Boutons personnalisés
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 0));
+        buttonPanel.setBackground(CARD_COLOR);
+
+        JButton yesButton = createCustomConfirmButton("Oui, j'en suis sûr", ERROR_COLOR);
+        JButton noButton = createCustomConfirmButton("Non", new Color(107, 114, 128));
+
+        yesButton.addActionListener(_ -> {
+            confirmDialog.dispose();
+            onConfirm.run();
+        });
+
+        noButton.addActionListener(_ -> confirmDialog.dispose());
+
+        buttonPanel.add(noButton);
+        buttonPanel.add(yesButton);
+
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        mainPanel.add(messageLabel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        confirmDialog.add(mainPanel);
+        confirmDialog.setVisible(true);
+    }
+
+    private JButton createCustomConfirmButton(String text, Color bgColor) {
+        JButton button = new JButton(text) {
+            private boolean isHovered = false;
+            private boolean isPressed = false;
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                Color currentColor;
+                if (isPressed) {
+                    currentColor = bgColor.darker();
+                } else if (isHovered) {
+                    currentColor = bgColor.brighter();
+                } else {
+                    currentColor = bgColor;
+                }
+
+                // Ombre dynamique
+                if (!isPressed) {
+                    g2d.setColor(new Color(0, 0, 0, isHovered ? 30 : 20));
+                    g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 15, 15);
+                }
+
+                // Gradient
+                GradientPaint gradient = new GradientPaint(
+                    0, 0, currentColor,
+                    0, getHeight(), currentColor.darker()
+                );
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 15, 15);
+
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+
+            @Override
+            protected void processMouseEvent(MouseEvent e) {
+                switch (e.getID()) {
+                    case MouseEvent.MOUSE_ENTERED:
+                        isHovered = true;
+                        repaint();
+                        break;
+                    case MouseEvent.MOUSE_EXITED:
+                        isHovered = false;
+                        repaint();
+                        break;
+                    case MouseEvent.MOUSE_PRESSED:
+                        isPressed = true;
+                        repaint();
+                        break;
+                    case MouseEvent.MOUSE_RELEASED:
+                        isPressed = false;
+                        repaint();
+                        break;
+                }
+                super.processMouseEvent(e);
+            }
+        };
+
+        button.setFont(getModernFont(Font.BOLD, 15));
+        button.setForeground(Color.WHITE);
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(12, 25, 12, 25));
+        button.setPreferredSize(new Dimension(140, 45));
+
+        return button;
+    }
+
+    // ✅ CORRECTION: Méthode showLevelDetailsDialog corrigée
     private void showLevelDetailsDialog() {
         int selectedRow = classStatsTable.getSelectedRow();
         if (selectedRow < 0) {
@@ -1818,19 +2202,14 @@ public class GradesManagementFrame extends JPanel {
             return;
         }
 
-        String niveauId = (String) classStatsTableModel.getValueAt(selectedRow, 4);
-        String semestre = (String) semestreComboBox.getSelectedItem();
-        String annee = (String) anneeComboBox.getSelectedItem();
-
-        semestre = (semestre == null || semestre.equals("")) ? null : semestre;
-        annee = (annee == null || annee.equals("")) ? null : annee;
-
-        try {
-            ClassStatisticsDTO stats = studentService.getClassStatistics(niveauId, semestre, annee, 5);
-            showUltraModernDetailsDialog(stats);
-        } catch (ApiException ex) {
-            showErrorNotification("Erreur lors du chargement des détails: " + ex.getMessage());
+        // ✅ CORRECTION: Utiliser l'index de la ligne pour récupérer les bonnes statistiques
+        if (selectedRow >= currentClassStats.size()) {
+            showErrorNotification("Erreur: données de statistiques non disponibles.");
+            return;
         }
+
+        ClassStatisticsDTO stats = currentClassStats.get(selectedRow);
+        showUltraModernDetailsDialog(stats);
     }
 
     private void showUltraModernDetailsDialog(ClassStatisticsDTO stats) {
@@ -1857,7 +2236,7 @@ public class GradesManagementFrame extends JPanel {
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(25, 0, 0, 0));
 
         JButton closeButton = createUltraModernButton("Fermer", IconType.CANCEL, ERROR_COLOR, true);
-        closeButton.addActionListener(e -> dialog.dispose());
+        closeButton.addActionListener(_ -> dialog.dispose());
 
         buttonPanel.add(closeButton);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
@@ -2118,7 +2497,7 @@ public class GradesManagementFrame extends JPanel {
         toast.setVisible(true);
 
         // Animation de disparition après 4 secondes
-        Timer timer = new Timer(4000, e -> {
+        Timer timer = new Timer(4000, _ -> {
             toast.setVisible(false);
             toast.dispose();
         });
