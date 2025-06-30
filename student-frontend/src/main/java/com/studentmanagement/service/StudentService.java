@@ -505,4 +505,84 @@ public class StudentService {
             throw new ApiException("Une erreur inattendue s'est produite.", ex);
         }
     }
+
+    public List<StudentAverageDTO> getStudentAverages(String semestre, String annee, String niveauId,
+            String parcoursId) {
+        try {
+            StringBuilder url = new StringBuilder(NOTES_API + "/averages");
+            url.append("?");
+            if (semestre != null) {
+                url.append("semestre=").append(semestre);
+                url.append("&");
+            }
+            if (annee != null) {
+                url.append("annee=").append(annee);
+                url.append("&");
+            }
+            if (niveauId != null) {
+                url.append("niveauId=").append(niveauId);
+                url.append("&");
+            }
+            if (parcoursId != null) {
+                url.append("parcoursId=").append(parcoursId);
+            }
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<StudentAverageDTO[]> response = restTemplate.exchange(
+                    url.toString(),
+                    HttpMethod.GET,
+                    request,
+                    StudentAverageDTO[].class);
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new StudentAverageDTO[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return new ArrayList<>();
+            } else if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            } else {
+                throw new ApiException("Erreur lors du chargement des moyennes.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
+
+    public List<ClassStatisticsDTO> getAllClassStatistics(String semestre, String annee, String niveauId,
+            String parcoursId) {
+        try {
+            StringBuilder url = new StringBuilder(NOTES_API + "/statistics");
+            url.append("?");
+            if (semestre != null) {
+                url.append("semestre=").append(semestre);
+                url.append("&");
+            }
+            if (annee != null) {
+                url.append("annee=").append(annee);
+                url.append("&");
+            }
+            if (niveauId != null) {
+                url.append("niveauId=").append(niveauId);
+                url.append("&");
+            }
+            if (parcoursId != null) {
+                url.append("parcoursId=").append(parcoursId);
+            }
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<ClassStatisticsDTO[]> response = restTemplate.exchange(
+                    url.toString(),
+                    HttpMethod.GET,
+                    request,
+                    ClassStatisticsDTO[].class);
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new ClassStatisticsDTO[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            }
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return new ArrayList<>();
+            }
+            throw new ApiException("Erreur lors du chargement des statistiques.", ex);
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
 }
