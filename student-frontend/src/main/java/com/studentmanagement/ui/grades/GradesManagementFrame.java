@@ -10,6 +10,7 @@ import com.studentmanagement.ui.common.ModernComponents;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import java.awt.GradientPaint;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -40,12 +41,20 @@ public class GradesManagementFrame extends JPanel {
     private JComboBox<Etudiant> studentComboBox;
     private JComboBox<String> semestreComboBox;
     private JComboBox<String> anneeComboBox;
+    private JComboBox<String> niveauComboBox;
+    private JComboBox<String> parcoursComboBox;
     private List<Etudiant> allStudents;
     private List<Matiere> allMatieres;
     private List<Niveau> allNiveaux;
+    private List<Parcours> allParcours;
     private JDialog currentDialog;
+    private JLabel classAverageLabel;
+    private JLabel minAverageLabel;
+    private JLabel maxAverageLabel;
+    private double classAverage;
+    private double minAverage;
+    private double maxAverage;
     
-    // ✅ CORRECTION: Stocker les statistiques pour accéder aux niveauId
     private List<ClassStatisticsDTO> currentClassStats = new ArrayList<>();
 
     // Palette de couleurs modernes ultra-améliorée
@@ -237,7 +246,6 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Gradient background
                 GradientPaint gradient = new GradientPaint(
                     0, 0, new Color(255, 255, 255, 200),
                     0, getHeight(), new Color(248, 250, 252, 100)
@@ -245,7 +253,6 @@ public class GradesManagementFrame extends JPanel {
                 g2d.setPaint(gradient);
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
                 
-                // Subtle border
                 g2d.setColor(new Color(226, 232, 240, 100));
                 g2d.setStroke(new BasicStroke(1));
                 g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 20, 20);
@@ -256,7 +263,6 @@ public class GradesManagementFrame extends JPanel {
         header.setLayout(new BorderLayout());
         header.setBorder(BorderFactory.createEmptyBorder(25, 30, 25, 30));
 
-        // Section titre avec icône et effets
         JPanel titleSection = new JPanel();
         titleSection.setLayout(new BoxLayout(titleSection, BoxLayout.Y_AXIS));
         titleSection.setOpaque(false);
@@ -264,7 +270,6 @@ public class GradesManagementFrame extends JPanel {
         JPanel titleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         titleRow.setOpaque(false);
 
-        // Icône avec effet de brillance
         JLabel iconLabel = new JLabel(createVectorIcon(IconType.NOTES, 40, PRIMARY_COLOR));
         iconLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         titleRow.add(iconLabel);
@@ -275,7 +280,6 @@ public class GradesManagementFrame extends JPanel {
         titleLabel.setForeground(TEXT_PRIMARY);
         titleRow.add(titleLabel);
 
-        // Badge moderne
         JLabel badgeLabel = new JLabel("PREMIUM") {
             @Override
             protected void paintComponent(Graphics g) {
@@ -322,11 +326,9 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Ombre plus prononcée
                 g2d.setColor(new Color(0, 0, 0, 25));
                 g2d.fillRoundRect(5, 5, getWidth() - 10, getHeight() - 10, 20, 20);
                 
-                // Gradient background
                 GradientPaint gradient = new GradientPaint(
                     0, 0, CARD_COLOR,
                     0, getHeight(), new Color(253, 254, 255)
@@ -334,7 +336,6 @@ public class GradesManagementFrame extends JPanel {
                 g2d.setPaint(gradient);
                 g2d.fillRoundRect(0, 0, getWidth() - 5, getHeight() - 5, 20, 20);
                 
-                // Bordure brillante
                 g2d.setColor(new Color(226, 232, 240, 150));
                 g2d.setStroke(new BasicStroke(1));
                 g2d.drawRoundRect(0, 0, getWidth() - 6, getHeight() - 6, 20, 20);
@@ -351,14 +352,13 @@ public class GradesManagementFrame extends JPanel {
         JPanel gradesPanel = createUltraModernGradesPanel();
         JPanel statsPanel = createUltraModernStatisticsPanel();
 
-        // Onglets avec icônes améliorées
-        tabbedPane.addTab("   Gestion des Notes   ", createVectorIcon(IconType.NOTES, 18, PRIMARY_COLOR), gradesPanel);
         tabbedPane.addTab("   Statistiques Avancées   ", createVectorIcon(IconType.CHART, 18, ACCENT_BLUE), statsPanel);
+        tabbedPane.addTab("   Gestion des Notes   ", createVectorIcon(IconType.NOTES, 18, PRIMARY_COLOR), gradesPanel);
 
         tabbedPane.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent e) {
-                if (tabbedPane.getSelectedIndex() == 0) {
+                if (tabbedPane.getSelectedIndex() == 1) {
                     loadData();
                 }
             }
@@ -374,7 +374,6 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Gradient subtil
                 GradientPaint gradient = new GradientPaint(
                     0, 0, CARD_COLOR,
                     0, getHeight(), new Color(249, 250, 251)
@@ -386,10 +385,18 @@ public class GradesManagementFrame extends JPanel {
         };
         gradesPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
 
+        // Panneau supérieur pour les filtres et boutons
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setBackground(BACKGROUND_COLOR);
+        topPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         JPanel header = createUltraModernGradesHeader();
-        gradesPanel.add(header, BorderLayout.NORTH);
+        topPanel.add(header, BorderLayout.CENTER);
 
+        // Panneau pour le tableau
         JPanel tablePanel = createUltraModernGradesTable();
+
+        // Ajout des panneaux à gradesPanel
+        gradesPanel.add(topPanel, BorderLayout.NORTH);
         gradesPanel.add(tablePanel, BorderLayout.CENTER);
 
         return gradesPanel;
@@ -402,7 +409,6 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Fond avec gradient
                 GradientPaint gradient = new GradientPaint(
                     0, 0, new Color(255, 255, 255, 200),
                     0, getHeight(), new Color(248, 250, 252, 100)
@@ -410,7 +416,6 @@ public class GradesManagementFrame extends JPanel {
                 g2d.setPaint(gradient);
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
                 
-                // Bordure subtile
                 g2d.setColor(new Color(226, 232, 240, 80));
                 g2d.setStroke(new BasicStroke(1));
                 g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 15, 15);
@@ -419,7 +424,6 @@ public class GradesManagementFrame extends JPanel {
         };
         header.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
 
-        // Panel de filtres ultra-moderne
         JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 0));
         filterPanel.setOpaque(false);
 
@@ -437,7 +441,6 @@ public class GradesManagementFrame extends JPanel {
         filterPanel.add(Box.createHorizontalStrut(10));
         filterPanel.add(studentComboBox);
 
-        // Panel d'actions ultra-moderne
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 0));
         actionPanel.setOpaque(false);
 
@@ -460,7 +463,6 @@ public class GradesManagementFrame extends JPanel {
         return header;
     }
 
-    // Amélioration 1: ComboBox avec interface améliorée et sans bordures intérieures
     private JComboBox<Etudiant> createUltraModernComboBox() {
         JComboBox<Etudiant> comboBox = new JComboBox<Etudiant>() {
             @Override
@@ -468,11 +470,9 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Ombre plus prononcée
                 g2d.setColor(new Color(0, 0, 0, 15));
                 g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 15, 15);
                 
-                // Gradient background
                 GradientPaint gradient = new GradientPaint(
                     0, 0, CARD_COLOR,
                     0, getHeight(), new Color(248, 250, 252)
@@ -487,10 +487,8 @@ public class GradesManagementFrame extends JPanel {
         comboBox.setFont(getModernFont(Font.PLAIN, 14));
         comboBox.setBackground(CARD_COLOR);
         comboBox.setForeground(TEXT_PRIMARY);
-        // Enlever la bordure intérieure - seulement padding
         comboBox.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
-        // UI personnalisée pour améliorer l'apparence
         comboBox.setUI(new BasicComboBoxUI() {
             @Override
             protected ComboPopup createPopup() {
@@ -500,11 +498,9 @@ public class GradesManagementFrame extends JPanel {
                         Graphics2D g2d = (Graphics2D) g.create();
                         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                         
-                        // Ombre pour la popup
                         g2d.setColor(new Color(0, 0, 0, 30));
                         g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
                         
-                        // Fond avec gradient
                         GradientPaint gradient = new GradientPaint(
                             0, 0, CARD_COLOR,
                             0, getHeight(), new Color(248, 250, 252)
@@ -512,7 +508,6 @@ public class GradesManagementFrame extends JPanel {
                         g2d.setPaint(gradient);
                         g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
                         
-                        // Bordure
                         g2d.setColor(PRIMARY_COLOR);
                         g2d.setStroke(new BasicStroke(2));
                         g2d.drawRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 12, 12);
@@ -530,7 +525,6 @@ public class GradesManagementFrame extends JPanel {
                         Graphics2D g2d = (Graphics2D) g.create();
                         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                         
-                        // Dessiner la flèche
                         g2d.setColor(TEXT_SECONDARY);
                         g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                         
@@ -549,7 +543,6 @@ public class GradesManagementFrame extends JPanel {
             }
         });
 
-        // Améliorer le renderer pour les éléments de la liste
         comboBox.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value,
@@ -567,7 +560,6 @@ public class GradesManagementFrame extends JPanel {
                     setForeground(TEXT_PRIMARY);
                 }
                 
-                // Effet hover
                 if (index >= 0 && !isSelected) {
                     setBackground(new Color(248, 250, 252));
                 }
@@ -598,13 +590,11 @@ public class GradesManagementFrame extends JPanel {
                     currentColor = isPrimary ? bgColor : CARD_COLOR;
                 }
 
-                // Ombre dynamique
                 if (!isPressed) {
                     g2d.setColor(new Color(0, 0, 0, isHovered ? 25 : 15));
                     g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 15, 15);
                 }
 
-                // Gradient pour les boutons primaires
                 if (isPrimary) {
                     GradientPaint gradient = new GradientPaint(
                         0, 0, currentColor,
@@ -617,7 +607,6 @@ public class GradesManagementFrame extends JPanel {
                 
                 g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 15, 15);
 
-                // Bordure pour les boutons secondaires
                 if (!isPrimary) {
                     g2d.setColor(isHovered ? PRIMARY_COLOR : BORDER_COLOR);
                     g2d.setStroke(new BasicStroke(1.5f));
@@ -660,7 +649,6 @@ public class GradesManagementFrame extends JPanel {
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setBorder(BorderFactory.createEmptyBorder(12, 28, 12, 28));
 
-        // Icône avec espacement amélioré
         Icon icon = createVectorIcon(iconType, 16, isPrimary ? Color.WHITE : TEXT_PRIMARY);
         button.setIcon(icon);
         button.setIconTextGap(10);
@@ -675,11 +663,9 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Ombre plus prononcée
                 g2d.setColor(new Color(0, 0, 0, 20));
                 g2d.fillRoundRect(5, 5, getWidth() - 10, getHeight() - 10, 20, 20);
                 
-                // Gradient background
                 GradientPaint gradient = new GradientPaint(
                     0, 0, CARD_COLOR,
                     0, getHeight(), new Color(253, 254, 255)
@@ -724,7 +710,6 @@ public class GradesManagementFrame extends JPanel {
                     comp.setBackground(new Color(239, 246, 255));
                 }
                 
-                // Centrage horizontal et vertical pour toutes les cellules
                 if (comp instanceof JLabel) {
                     ((JLabel) comp).setHorizontalAlignment(JLabel.CENTER);
                 }
@@ -742,7 +727,6 @@ public class GradesManagementFrame extends JPanel {
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
 
-        // En-tête ultra-moderne
         javax.swing.table.JTableHeader header = table.getTableHeader();
         header.setFont(getModernFont(Font.BOLD, 15));
         header.setBackground(new Color(248, 250, 252));
@@ -750,7 +734,6 @@ public class GradesManagementFrame extends JPanel {
         header.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, new Color(79, 70, 229, 100)));
         header.setPreferredSize(new Dimension(header.getPreferredSize().width, 55));
 
-        // Renderer pour centrer les en-têtes
         DefaultTableCellRenderer headerRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
@@ -766,12 +749,10 @@ public class GradesManagementFrame extends JPanel {
             }
         };
 
-        // Appliquer le renderer à toutes les colonnes d'en-tête
         for (int i = 0; i < table.getColumnCount(); i++) {
             table.getColumnModel().getColumn(i).setHeaderRenderer(headerRenderer);
         }
 
-        // Renderer pour centrer le contenu des cellules
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
@@ -785,7 +766,6 @@ public class GradesManagementFrame extends JPanel {
             }
         };
 
-        // Appliquer le renderer à toutes les colonnes sauf Actions
         for (int i = 0; i < table.getColumnCount() - 1; i++) {
             table.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
         }
@@ -793,7 +773,6 @@ public class GradesManagementFrame extends JPanel {
         return table;
     }
 
-    // Amélioration 2: ScrollPane avec scrollbar plus belle
     private JScrollPane createUltraModernScrollPane(Component component) {
         JScrollPane scrollPane = new JScrollPane(component) {
             @Override
@@ -801,7 +780,6 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Fond transparent
                 g2d.setColor(new Color(0, 0, 0, 0));
                 g2d.fillRect(0, 0, getWidth(), getHeight());
                 g2d.dispose();
@@ -815,12 +793,11 @@ public class GradesManagementFrame extends JPanel {
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.setOpaque(false);
 
-        // Scrollbar verticale améliorée
         scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
             @Override
             protected void configureScrollBarColors() {
-                this.thumbColor = new Color(156, 163, 175); // Gris plus visible
-                this.trackColor = new Color(243, 244, 246); // Fond plus clair
+                this.thumbColor = new Color(156, 163, 175);
+                this.trackColor = new Color(243, 244, 246);
             }
 
             @Override
@@ -846,12 +823,10 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Ombre pour le thumb
                 g2d.setColor(new Color(0, 0, 0, 30));
                 g2d.fillRoundRect(thumbBounds.x + 1, thumbBounds.y + 1,
                         thumbBounds.width - 2, thumbBounds.height - 2, 8, 8);
                 
-                // Gradient pour le thumb
                 GradientPaint gradient = new GradientPaint(
                     thumbBounds.x, thumbBounds.y, new Color(156, 163, 175),
                     thumbBounds.x + thumbBounds.width, thumbBounds.y, new Color(107, 114, 128)
@@ -860,7 +835,6 @@ public class GradesManagementFrame extends JPanel {
                 g2d.fillRoundRect(thumbBounds.x, thumbBounds.y,
                         thumbBounds.width - 1, thumbBounds.height - 1, 8, 8);
                 
-                // Highlight
                 g2d.setColor(new Color(255, 255, 255, 60));
                 g2d.fillRoundRect(thumbBounds.x + 1, thumbBounds.y + 1,
                         thumbBounds.width - 3, thumbBounds.height / 3, 6, 6);
@@ -873,7 +847,6 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Track avec gradient
                 GradientPaint gradient = new GradientPaint(
                     trackBounds.x, trackBounds.y, new Color(248, 250, 252),
                     trackBounds.x + trackBounds.width, trackBounds.y, new Color(241, 245, 249)
@@ -896,7 +869,6 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Gradient subtil
                 GradientPaint gradient = new GradientPaint(
                     0, 0, CARD_COLOR,
                     0, getHeight(), new Color(249, 250, 251)
@@ -917,7 +889,6 @@ public class GradesManagementFrame extends JPanel {
         return statsPanel;
     }
 
-    // Amélioration 4: Alignement horizontal du bouton avec les filtres
     private JPanel createUltraModernStatsFilterPanel() {
         JPanel filterPanel = new JPanel() {
             @Override
@@ -925,7 +896,6 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Fond avec gradient
                 GradientPaint gradient = new GradientPaint(
                     0, 0, new Color(255, 255, 255, 200),
                     0, getHeight(), new Color(248, 250, 252, 100)
@@ -933,7 +903,6 @@ public class GradesManagementFrame extends JPanel {
                 g2d.setPaint(gradient);
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
                 
-                // Bordure subtile
                 g2d.setColor(new Color(226, 232, 240, 80));
                 g2d.setStroke(new BasicStroke(1));
                 g2d.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 15, 15);
@@ -941,9 +910,38 @@ public class GradesManagementFrame extends JPanel {
             }
         };
         
-        // Utiliser un FlowLayout pour aligner horizontalement tous les éléments
         filterPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 20, 0));
         filterPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+
+        JLabel niveauLabel = new JLabel("Niveau");
+        niveauLabel.setFont(getModernFont(Font.BOLD, 15));
+        niveauLabel.setForeground(TEXT_PRIMARY);
+        niveauLabel.setIcon(createVectorIcon(IconType.BOOK, 18, ACCENT_PURPLE));
+        niveauLabel.setIconTextGap(10);
+
+        niveauComboBox = createUltraModernStringComboBox();
+        niveauComboBox.addItem("Tous");
+        if (allNiveaux != null) {
+            for (Niveau niveau : allNiveaux) {
+                niveauComboBox.addItem(niveau.getNom());
+            }
+        }
+        niveauComboBox.addActionListener(_ -> loadStatistics());
+
+        JLabel parcoursLabel = new JLabel("Parcours");
+        parcoursLabel.setFont(getModernFont(Font.BOLD, 15));
+        parcoursLabel.setForeground(TEXT_PRIMARY);
+        parcoursLabel.setIcon(createVectorIcon(IconType.TARGET, 18, ACCENT_PINK));
+        parcoursLabel.setIconTextGap(10);
+
+        parcoursComboBox = createUltraModernStringComboBox();
+        parcoursComboBox.addItem("Tous");
+        if (allParcours != null) {
+            for (Parcours parcours : allParcours) {
+                parcoursComboBox.addItem(parcours.getNom());
+            }
+        }
+        parcoursComboBox.addActionListener(_ -> loadStatistics());
 
         JLabel semestreLabel = new JLabel("Semestre");
         semestreLabel.setFont(getModernFont(Font.BOLD, 15));
@@ -955,6 +953,7 @@ public class GradesManagementFrame extends JPanel {
         semestreComboBox.addItem("");
         semestreComboBox.addItem("S1");
         semestreComboBox.addItem("S2");
+        semestreComboBox.addActionListener(_ -> loadStatistics());
 
         JLabel anneeLabel = new JLabel("Année Académique");
         anneeLabel.setFont(getModernFont(Font.BOLD, 15));
@@ -967,23 +966,27 @@ public class GradesManagementFrame extends JPanel {
         anneeComboBox.addItem("2023-2024");
         anneeComboBox.addItem("2024-2025");
         anneeComboBox.addItem("2025-2026");
+        anneeComboBox.addActionListener(_ -> loadStatistics());
 
-        // Aligner le bouton à la même hauteur que les ComboBox
         JButton loadStatsButton = createUltraModernButton("Analyser les Données", IconType.CHART, SECONDARY_COLOR, false);
-        // Même hauteur que les ComboBox
         loadStatsButton.setPreferredSize(new Dimension(180, 40));
         loadStatsButton.addActionListener(_ -> {
             loadStatistics();
             showSuccessNotification("Statistiques mises à jour!");
         });
 
-        // Ajouter tous les éléments sur la même ligne
+        filterPanel.add(niveauLabel);
+        filterPanel.add(niveauComboBox);
+        filterPanel.add(Box.createHorizontalStrut(20));
+        filterPanel.add(parcoursLabel);
+        filterPanel.add(parcoursComboBox);
+        filterPanel.add(Box.createHorizontalStrut(20));
         filterPanel.add(semestreLabel);
         filterPanel.add(semestreComboBox);
-        filterPanel.add(Box.createHorizontalStrut(20)); // Espacement
+        filterPanel.add(Box.createHorizontalStrut(20));
         filterPanel.add(anneeLabel);
         filterPanel.add(anneeComboBox);
-        filterPanel.add(Box.createHorizontalStrut(20)); // Espacement
+        filterPanel.add(Box.createHorizontalStrut(20));
         filterPanel.add(loadStatsButton);
 
         return filterPanel;
@@ -996,11 +999,9 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Ombre plus prononcée
                 g2d.setColor(new Color(0, 0, 0, 15));
                 g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 15, 15);
                 
-                // Gradient background
                 GradientPaint gradient = new GradientPaint(
                     0, 0, CARD_COLOR,
                     0, getHeight(), new Color(248, 250, 252)
@@ -1016,10 +1017,8 @@ public class GradesManagementFrame extends JPanel {
         comboBox.setBackground(CARD_COLOR);
         comboBox.setForeground(TEXT_PRIMARY);
         comboBox.setPreferredSize(new Dimension(150, 40));
-        // Enlever la bordure intérieure - seulement padding
         comboBox.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
 
-        // UI personnalisée similaire à createUltraModernComboBox
         comboBox.setUI(new BasicComboBoxUI() {
             @Override
             protected ComboPopup createPopup() {
@@ -1029,11 +1028,9 @@ public class GradesManagementFrame extends JPanel {
                         Graphics2D g2d = (Graphics2D) g.create();
                         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                         
-                        // Ombre pour la popup
                         g2d.setColor(new Color(0, 0, 0, 30));
                         g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 12, 12);
                         
-                        // Fond avec gradient
                         GradientPaint gradient = new GradientPaint(
                             0, 0, CARD_COLOR,
                             0, getHeight(), new Color(248, 250, 252)
@@ -1041,7 +1038,6 @@ public class GradesManagementFrame extends JPanel {
                         g2d.setPaint(gradient);
                         g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 12, 12);
                         
-                        // Bordure
                         g2d.setColor(ACCENT_BLUE);
                         g2d.setStroke(new BasicStroke(2));
                         g2d.drawRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 12, 12);
@@ -1059,7 +1055,6 @@ public class GradesManagementFrame extends JPanel {
                         Graphics2D g2d = (Graphics2D) g.create();
                         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                         
-                        // Dessiner la flèche
                         g2d.setColor(TEXT_SECONDARY);
                         g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                         
@@ -1078,7 +1073,6 @@ public class GradesManagementFrame extends JPanel {
             }
         });
 
-        // Améliorer le renderer
         comboBox.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value,
@@ -1110,11 +1104,9 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Ombre
                 g2d.setColor(new Color(0, 0, 0, 15));
                 g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 15, 15);
                 
-                // Gradient background
                 GradientPaint gradient = new GradientPaint(
                     0, 0, CARD_COLOR,
                     0, getHeight(), new Color(253, 254, 255)
@@ -1143,7 +1135,19 @@ public class GradesManagementFrame extends JPanel {
         averagesPanel.setBackground(CARD_COLOR);
         averagesPanel.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
 
-        String[] columns = {"Matricule", "Prénom", "Nom", "Moyenne", "Statut", "Mention"};
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.setBackground(CARD_COLOR);
+        topPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+
+        // Bouton commenté comme demandé
+        // JButton addDataButton = createUltraModernButton("Ajouter des Données", IconType.PLUS, PRIMARY_COLOR, true);
+        // addDataButton.addActionListener(_ -> showAddDataDialog());
+        // topPanel.add(addDataButton);
+
+        averagesPanel.add(topPanel, BorderLayout.NORTH);
+
+        // Remplacement de "Statut" par "Observation"
+        String[] columns = {"Matricule", "Prénom", "Nom", "Moyenne", "Mention", "Observation"};
         averagesTableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -1154,6 +1158,28 @@ public class GradesManagementFrame extends JPanel {
         averagesTable = createUltraModernTable(averagesTableModel);
         JScrollPane scrollPane = createUltraModernScrollPane(averagesTable);
         averagesPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel statsSummaryPanel = new JPanel(new GridLayout(1, 3, 20, 0));
+        statsSummaryPanel.setBackground(CARD_COLOR);
+        statsSummaryPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+
+        classAverageLabel = new JLabel("Moyenne de classe: ");
+        classAverageLabel.setFont(getModernFont(Font.BOLD, 16));
+        classAverageLabel.setForeground(TEXT_PRIMARY);
+
+        minAverageLabel = new JLabel("Moyenne min: ");
+        minAverageLabel.setFont(getModernFont(Font.BOLD, 16));
+        minAverageLabel.setForeground(TEXT_PRIMARY);
+
+        maxAverageLabel = new JLabel("Moyenne max: ");
+        maxAverageLabel.setFont(getModernFont(Font.BOLD, 16));
+        maxAverageLabel.setForeground(TEXT_PRIMARY);
+
+        statsSummaryPanel.add(classAverageLabel);
+        statsSummaryPanel.add(minAverageLabel);
+        statsSummaryPanel.add(maxAverageLabel);
+
+        averagesPanel.add(statsSummaryPanel, BorderLayout.SOUTH);
 
         return averagesPanel;
     }
@@ -1184,12 +1210,11 @@ public class GradesManagementFrame extends JPanel {
     private void showGradeFormDialog(Note note) {
         boolean isEdit = note != null;
         
-        // Taille agrandie du dialog
         currentDialog = new UltraModernDialog(
             (Frame) SwingUtilities.getWindowAncestor(this),
             isEdit ? "Modifier la Note" : "Ajouter une Note"
         );
-        currentDialog.setSize(650, 750); // Taille agrandie
+        currentDialog.setSize(650, 750);
         currentDialog.setLocationRelativeTo(this);
 
         loadData();
@@ -1201,7 +1226,6 @@ public class GradesManagementFrame extends JPanel {
         currentDialog.setVisible(true);
     }
 
-    // Classe pour une boîte de dialogue ultra-moderne
     private class UltraModernDialog extends JDialog {
         public UltraModernDialog(Frame parent, String title) {
             super(parent, title, true);
@@ -1219,11 +1243,9 @@ public class GradesManagementFrame extends JPanel {
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             
-            // Ombre plus prononcée
             g2d.setColor(new Color(0, 0, 0, 40));
             g2d.fillRoundRect(8, 8, getWidth() - 16, getHeight() - 16, 25, 25);
             
-            // Gradient background
             GradientPaint gradient = new GradientPaint(
                 0, 0, CARD_COLOR,
                 0, getHeight(), new Color(253, 254, 255)
@@ -1231,7 +1253,6 @@ public class GradesManagementFrame extends JPanel {
             g2d.setPaint(gradient);
             g2d.fillRoundRect(0, 0, getWidth() - 15, getHeight() - 15, 25, 25);
             
-            // Bordure brillante
             g2d.setColor(new Color(79, 70, 229, 150));
             g2d.setStroke(new BasicStroke(2));
             g2d.drawRoundRect(0, 0, getWidth() - 16, getHeight() - 16, 25, 25);
@@ -1246,7 +1267,6 @@ public class GradesManagementFrame extends JPanel {
         mainPanel.setBackground(CARD_COLOR);
         mainPanel.setBorder(BorderFactory.createEmptyBorder(35, 35, 35, 35));
 
-        // En-tête ultra-moderne avec icône
         JPanel headerPanel = createUltraModernDialogHeader(
             isEdit ? "Modifier la Note" : "Ajouter une Note",
             "Veuillez remplir tous les champs requis avec précision",
@@ -1254,7 +1274,6 @@ public class GradesManagementFrame extends JPanel {
         );
         mainPanel.add(headerPanel, BorderLayout.NORTH);
 
-        // Formulaire
         JPanel formPanel = createUltraModernGradeForm(note, isEdit);
         JScrollPane formScrollPane = new JScrollPane(formPanel);
         formScrollPane.setBorder(null);
@@ -1263,7 +1282,6 @@ public class GradesManagementFrame extends JPanel {
         formScrollPane.getViewport().setOpaque(false);
         mainPanel.add(formScrollPane, BorderLayout.CENTER);
 
-        // Boutons
         JPanel buttonPanel = createUltraModernDialogButtons(note, isEdit);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
@@ -1291,7 +1309,6 @@ public class GradesManagementFrame extends JPanel {
         titleLabel.setForeground(TEXT_PRIMARY);
         leftPanel.add(titleLabel);
 
-        // Bouton de fermeture amélioré
         JButton closeButton = new JButton() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -1339,7 +1356,6 @@ public class GradesManagementFrame extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.WEST;
 
-        // Matière
         gbc.gridx = 0; gbc.gridy = 0;
         JLabel matiereLabel = createUltraModernFormLabel("Matière *", IconType.BOOK);
         formPanel.add(matiereLabel, gbc);
@@ -1348,8 +1364,8 @@ public class GradesManagementFrame extends JPanel {
         JComboBox<Matiere> matiereComboBox = createUltraModernMatiereComboBox();
         matiereComboBox.setPreferredSize(new Dimension(500, 50));
         if (allMatieres != null) {
-            for (Matiere matiere : allMatieres) {
-                matiereComboBox.addItem(matiere);
+            for (Matiere matière : allMatieres) {
+                matiereComboBox.addItem(matière);
             }
         }
         if (isEdit && note != null) {
@@ -1362,7 +1378,6 @@ public class GradesManagementFrame extends JPanel {
         }
         formPanel.add(matiereComboBox, gbc);
 
-        // Note
         gbc.gridy = 2;
         JLabel valeurLabel = createUltraModernFormLabel("Note sur 20 *", IconType.STAR);
         formPanel.add(valeurLabel, gbc);
@@ -1378,7 +1393,6 @@ public class GradesManagementFrame extends JPanel {
         });
         formPanel.add(valeurField, gbc);
 
-        // Semestre
         gbc.gridy = 4;
         JLabel semestreLabel = createUltraModernFormLabel("Semestre *", IconType.FILTER);
         formPanel.add(semestreLabel, gbc);
@@ -1393,7 +1407,6 @@ public class GradesManagementFrame extends JPanel {
         }
         formPanel.add(formSemestreComboBox, gbc);
 
-        // Année académique
         gbc.gridy = 6;
         JLabel anneeLabel = createUltraModernFormLabel("Année Académique *", IconType.ACADEMIC);
         formPanel.add(anneeLabel, gbc);
@@ -1421,11 +1434,9 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Ombre plus prononcée
                 g2d.setColor(new Color(0, 0, 0, 10));
                 g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 15, 15);
                 
-                // Gradient background
                 GradientPaint gradient = new GradientPaint(
                     0, 0, getBackground(),
                     0, getHeight(), new Color(248, 250, 252)
@@ -1444,7 +1455,6 @@ public class GradesManagementFrame extends JPanel {
             new UltraModernBorder(BORDER_COLOR),
             BorderFactory.createEmptyBorder(15, 20, 15, 20)));
 
-        // Effet de focus amélioré
         textField.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -1471,11 +1481,9 @@ public class GradesManagementFrame extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Ombre plus prononcée
                 g2d.setColor(new Color(0, 0, 0, 10));
                 g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 15, 15);
                 
-                // Gradient background
                 GradientPaint gradient = new GradientPaint(
                     0, 0, getBackground(),
                     0, getHeight(), new Color(248, 250, 252)
@@ -1513,7 +1521,6 @@ public class GradesManagementFrame extends JPanel {
         endYearField.setPreferredSize(new Dimension(150, 50));
         endYearField.setToolTipText("Année de fin (ex: 2025)");
 
-        // Validation en temps réel pour les années
         startYearField.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent e) {
@@ -1558,13 +1565,11 @@ public class GradesManagementFrame extends JPanel {
         JButton cancelButton = createUltraModernButton("Annuler", IconType.CANCEL, ERROR_COLOR, true);
 
         saveButton.addActionListener(_ -> {
-            // Logique de sauvegarde ici
             if (validateAndSaveGrade(note, isEdit)) {
                 currentDialog.dispose();
             }
         });
 
-        // Correction du bouton annuler
         cancelButton.addActionListener(_ -> {
             if (currentDialog != null) {
                 currentDialog.dispose();
@@ -1578,9 +1583,7 @@ public class GradesManagementFrame extends JPanel {
     }
 
     private boolean validateAndSaveGrade(Note note, boolean isEdit) {
-        // Implémentation de la validation et sauvegarde
         try {
-            // Logique de validation et sauvegarde ici
             loadGrades();
             showSuccessNotification(isEdit ? "Note modifiée avec succès!" : "Note ajoutée avec succès!");
             return true;
@@ -1590,7 +1593,6 @@ public class GradesManagementFrame extends JPanel {
         }
     }
 
-    // Classes pour les renderers et editors ultra-modernes
     private class UltraModernActionButtonRenderer extends JPanel implements TableCellRenderer {
         private JButton editButton;
         private JButton deleteButton;
@@ -1613,11 +1615,9 @@ public class GradesManagementFrame extends JPanel {
                     Graphics2D g2d = (Graphics2D) g.create();
                     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                     
-                    // Ombre
                     g2d.setColor(new Color(0, 0, 0, 20));
                     g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 10, 10);
                     
-                    // Gradient background
                     if (getModel().isPressed()) {
                         g2d.setColor(color.darker());
                     } else if (getModel().isRollover()) {
@@ -1658,7 +1658,7 @@ public class GradesManagementFrame extends JPanel {
         }
     }
 
-    private class UltraModernActionButtonEditor extends DefaultCellEditor {
+        private class UltraModernActionButtonEditor extends DefaultCellEditor {
         private JPanel panel;
         private JButton editButton;
         private JButton deleteButton;
@@ -1696,28 +1696,26 @@ public class GradesManagementFrame extends JPanel {
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2d = (Graphics2D) g.create();
                     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    
-                    // Ombre
+
                     g2d.setColor(new Color(0, 0, 0, 20));
                     g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 10, 10);
-                    
-                    // Gradient background
+
                     if (getModel().isPressed()) {
                         g2d.setColor(color.darker());
                     } else if (getModel().isRollover()) {
                         GradientPaint gradient = new GradientPaint(
-                            0, 0, color.brighter(),
-                            0, getHeight(), color
+                                0, 0, color.brighter(),
+                                0, getHeight(), color
                         );
                         g2d.setPaint(gradient);
                     } else {
                         GradientPaint gradient = new GradientPaint(
-                            0, 0, color,
-                            0, getHeight(), color.darker()
+                                0, 0, color,
+                                0, getHeight(), color.darker()
                         );
                         g2d.setPaint(gradient);
                     }
-                    
+
                     g2d.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 10, 10);
                     g2d.dispose();
                     super.paintComponent(g);
@@ -1736,7 +1734,7 @@ public class GradesManagementFrame extends JPanel {
 
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value,
-                boolean isSelected, int row, int column) {
+                                                    boolean isSelected, int row, int column) {
             return panel;
         }
 
@@ -1763,28 +1761,26 @@ public class GradesManagementFrame extends JPanel {
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2d = (Graphics2D) g.create();
                     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    
-                    // Ombre
+
                     g2d.setColor(new Color(0, 0, 0, 20));
                     g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 12, 12);
-                    
-                    // Gradient background
+
                     if (getModel().isPressed()) {
                         g2d.setColor(ACCENT_BLUE.darker());
                     } else if (getModel().isRollover()) {
                         GradientPaint gradient = new GradientPaint(
-                            0, 0, ACCENT_BLUE.brighter(),
-                            0, getHeight(), ACCENT_BLUE
+                                0, 0, ACCENT_BLUE.brighter(),
+                                0, getHeight(), ACCENT_BLUE
                         );
                         g2d.setPaint(gradient);
                     } else {
                         GradientPaint gradient = new GradientPaint(
-                            0, 0, ACCENT_BLUE,
-                            0, getHeight(), ACCENT_BLUE.darker()
+                                0, 0, ACCENT_BLUE,
+                                0, getHeight(), ACCENT_BLUE.darker()
                         );
                         g2d.setPaint(gradient);
                     }
-                    
+
                     g2d.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 12, 12);
                     g2d.dispose();
                     super.paintComponent(g);
@@ -1805,7 +1801,7 @@ public class GradesManagementFrame extends JPanel {
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
-                boolean isSelected, boolean hasFocus, int row, int column) {
+                                                      boolean isSelected, boolean hasFocus, int row, int column) {
             setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
             return this;
         }
@@ -1838,28 +1834,26 @@ public class GradesManagementFrame extends JPanel {
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2d = (Graphics2D) g.create();
                     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    
-                    // Ombre
+
                     g2d.setColor(new Color(0, 0, 0, 20));
                     g2d.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, 12, 12);
-                    
-                    // Gradient background
+
                     if (getModel().isPressed()) {
                         g2d.setColor(ACCENT_BLUE.darker());
                     } else if (getModel().isRollover()) {
                         GradientPaint gradient = new GradientPaint(
-                            0, 0, ACCENT_BLUE.brighter(),
-                            0, getHeight(), ACCENT_BLUE
+                                0, 0, ACCENT_BLUE.brighter(),
+                                0, getHeight(), ACCENT_BLUE
                         );
                         g2d.setPaint(gradient);
                     } else {
                         GradientPaint gradient = new GradientPaint(
-                            0, 0, ACCENT_BLUE,
-                            0, getHeight(), ACCENT_BLUE.darker()
+                                0, 0, ACCENT_BLUE,
+                                0, getHeight(), ACCENT_BLUE.darker()
                         );
                         g2d.setPaint(gradient);
                     }
-                    
+
                     g2d.fillRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 12, 12);
                     g2d.dispose();
                     super.paintComponent(g);
@@ -1880,7 +1874,7 @@ public class GradesManagementFrame extends JPanel {
 
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value,
-                boolean isSelected, int row, int column) {
+                                                    boolean isSelected, int row, int column) {
             return panel;
         }
 
@@ -1890,7 +1884,6 @@ public class GradesManagementFrame extends JPanel {
         }
     }
 
-    // Classe de bordure ultra-moderne
     private static class UltraModernBorder extends AbstractBorder {
         private final Color color;
         private final int thickness;
@@ -1924,12 +1917,12 @@ public class GradesManagementFrame extends JPanel {
         }
     }
 
-    // Méthodes de données existantes avec améliorations
     private void loadData() {
         try {
             allStudents = studentService.getAllEtudiants(mainWindow.getCurrentResponsable().getId());
             allMatieres = studentService.getAllMatieres();
             allNiveaux = studentService.getAllNiveaux();
+            allParcours = studentService.getAllParcours();
 
             studentComboBox.removeAllItems();
             for (Etudiant student : allStudents) {
@@ -1939,6 +1932,18 @@ public class GradesManagementFrame extends JPanel {
             if (!allStudents.isEmpty()) {
                 studentComboBox.setSelectedIndex(0);
                 loadGrades();
+            }
+
+            niveauComboBox.removeAllItems();
+            niveauComboBox.addItem("Tous");
+            for (Niveau niveau : allNiveaux) {
+                niveauComboBox.addItem(niveau.getNom());
+            }
+
+            parcoursComboBox.removeAllItems();
+            parcoursComboBox.addItem("Tous");
+            for (Parcours parcours : allParcours) {
+                parcoursComboBox.addItem(parcours.getNom());
             }
         } catch (ApiException ex) {
             showErrorNotification("Erreur lors du chargement des données: " + ex.getMessage());
@@ -1956,12 +1961,12 @@ public class GradesManagementFrame extends JPanel {
             for (Note note : notes) {
                 Matiere matiere = getMatiereById(note.getMatiereId());
                 gradesTableModel.addRow(new Object[]{
-                    matiere != null ? matiere.getNom() : note.getMatiereId(),
-                    matiere != null ? matiere.getCoefficient() : "N/A",
-                    String.format("%.1f", note.getValeur()),
-                    note.getSemestre(),
-                    note.getAnnee(),
-                    "Actions"
+                        matiere != null ? matiere.getNom() : note.getMatiereId(),
+                        matiere != null ? matiere.getCoefficient() : "N/A",
+                        String.format("%.1f", note.getValeur()),
+                        note.getSemestre(),
+                        note.getAnnee(),
+                        "Actions"
                 });
             }
         } catch (ApiException ex) {
@@ -1969,46 +1974,82 @@ public class GradesManagementFrame extends JPanel {
         }
     }
 
-    // ✅ CORRECTION: Méthode loadStatistics corrigée
     private void loadStatistics() {
+        String niveau = (String) niveauComboBox.getSelectedItem();
+        String parcours = (String) parcoursComboBox.getSelectedItem();
         String semestre = (String) semestreComboBox.getSelectedItem();
         String annee = (String) anneeComboBox.getSelectedItem();
 
-        semestre = (semestre == null || semestre.equals("")) ? null : semestre;
-        annee = (annee == null || annee.equals("")) ? null : annee;
+        // Gestion des valeurs nulles ou par défaut
+        niveau = "Tous".equals(niveau) ? null : niveau;
+        parcours = "Tous".equals(parcours) ? null : parcours;
+        semestre = (semestre == null || semestre.isEmpty()) ? null : semestre;
+        annee = (annee == null || annee.isEmpty()) ? null : annee;
 
         try {
-            // Load student averages
-            List<StudentAverageDTO> averages = studentService.getStudentAverages(semestre, annee);
+            // Charger les moyennes des étudiants
+            List<StudentAverageDTO> averages = studentService.getStudentAverages(semestre, annee, niveau, parcours);
             averagesTableModel.setRowCount(0);
 
+            double sum = 0;
+            double min = Double.MAX_VALUE;
+            double max = Double.MIN_VALUE;
+
             for (StudentAverageDTO avg : averages) {
+                double moyenne = avg.getMoyenne();
+                String mention = getMention(moyenne);
+                // Remplacement de "non admis" par "redoublant"
+                String observation = "Non Admis".equals(avg.getAdmissionStatus()) ? "Redoublant" : avg.getAdmissionStatus();
                 averagesTableModel.addRow(new Object[]{
-                    avg.getMatricule(),
-                    avg.getPrenom(),
-                    avg.getNom(),
-                    String.format("%.2f", avg.getMoyenne()),
-                    avg.getAdmissionStatus(),
-                    avg.getMention()
+                        avg.getMatricule(),
+                        avg.getPrenom(),
+                        avg.getNom(),
+                        String.format("%.2f", moyenne),
+                        mention,
+                        observation
                 });
+                sum += moyenne;
+                if (moyenne < min) min = moyenne;
+                if (moyenne > max) max = moyenne;
             }
 
-            // ✅ CORRECTION: Stocker les statistiques et utiliser l'index correct
-            currentClassStats = studentService.getAllClassStatistics(semestre, annee);
+            classAverage = averages.isEmpty() ? 0 : sum / averages.size();
+            minAverage = min == Double.MAX_VALUE ? 0 : min;
+            maxAverage = max == Double.MIN_VALUE ? 0 : max;
+
+            classAverageLabel.setText("Moyenne de classe: " + String.format("%.2f", classAverage));
+            minAverageLabel.setText("Moyenne min: " + String.format("%.2f", minAverage));
+            maxAverageLabel.setText("Moyenne max: " + String.format("%.2f", maxAverage));
+
+            // Charger les statistiques des classes
+            currentClassStats = studentService.getAllClassStatistics(semestre, annee, niveau, parcours);
             classStatsTableModel.setRowCount(0);
 
             for (ClassStatisticsDTO stats : currentClassStats) {
                 classStatsTableModel.addRow(new Object[]{
-                    stats.getNiveauNom(),
-                    String.format("%.2f", stats.getMoyenneGenerale()),
-                    String.format("%.2f", stats.getMaxMoyenne()),
-                    String.format("%.2f", stats.getMinMoyenne()),
-                    "Détails" // Texte du bouton, pas le niveauId
+                        stats.getNiveauNom(),
+                        String.format("%.2f", stats.getMoyenneGenerale()),
+                        String.format("%.2f", stats.getMaxMoyenne()),
+                        String.format("%.2f", stats.getMinMoyenne()),
+                        "Détails"
                 });
             }
         } catch (ApiException ex) {
             showErrorNotification("Erreur lors du chargement des statistiques: " + ex.getMessage());
         }
+    }
+
+    private String getMention(double moyenne) {
+        // Ajout de la condition pour "exclus" si moyenne < 5
+        if (moyenne < 5) return "exclus";
+        else if (moyenne < 10) return "Repêchage";
+        else if (moyenne < 12) return "Passable";
+        else if (moyenne < 14) return "Assez bien";
+        else if (moyenne < 16) return "Bien";
+        else if (moyenne < 18) return "Très bien";
+        else if (moyenne < 20) return "Excellent";
+        else if (moyenne == 20) return "Honorable";
+        else return "Invalide";
     }
 
     private Matiere getMatiereById(String id) {
@@ -2038,7 +2079,6 @@ public class GradesManagementFrame extends JPanel {
         }
     }
 
-    // Amélioration 3: Dialog de suppression personnalisé
     private void deleteGrade() {
         int selectedRow = gradesTable.getSelectedRow();
         if (selectedRow >= 0) {
@@ -2066,8 +2106,8 @@ public class GradesManagementFrame extends JPanel {
 
     private void showCustomDeleteConfirmDialog(Runnable onConfirm) {
         JDialog confirmDialog = new UltraModernDialog(
-            (Frame) SwingUtilities.getWindowAncestor(this),
-            "Confirmation de suppression"
+                (Frame) SwingUtilities.getWindowAncestor(this),
+                "Confirmation de suppression"
         );
         confirmDialog.setSize(480, 280);
         confirmDialog.setLocationRelativeTo(this);
@@ -2076,7 +2116,6 @@ public class GradesManagementFrame extends JPanel {
         mainPanel.setBackground(CARD_COLOR);
         mainPanel.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
 
-        // En-tête avec icône d'avertissement
         JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         headerPanel.setBackground(CARD_COLOR);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
@@ -2089,14 +2128,12 @@ public class GradesManagementFrame extends JPanel {
         headerPanel.add(warningIcon);
         headerPanel.add(titleLabel);
 
-        // Message
         JLabel messageLabel = new JLabel("<html><center>Cette action est irréversible.<br/>La note sera définitivement supprimée.</center></html>");
         messageLabel.setFont(getModernFont(Font.PLAIN, 16));
         messageLabel.setForeground(TEXT_SECONDARY);
         messageLabel.setHorizontalAlignment(JLabel.CENTER);
         messageLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
 
-        // Boutons personnalisés
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 0));
         buttonPanel.setBackground(CARD_COLOR);
 
@@ -2140,16 +2177,14 @@ public class GradesManagementFrame extends JPanel {
                     currentColor = bgColor;
                 }
 
-                // Ombre dynamique
                 if (!isPressed) {
                     g2d.setColor(new Color(0, 0, 0, isHovered ? 30 : 20));
                     g2d.fillRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 15, 15);
                 }
 
-                // Gradient
                 GradientPaint gradient = new GradientPaint(
-                    0, 0, currentColor,
-                    0, getHeight(), currentColor.darker()
+                        0, 0, currentColor,
+                        0, getHeight(), currentColor.darker()
                 );
                 g2d.setPaint(gradient);
                 g2d.fillRoundRect(0, 0, getWidth() - 3, getHeight() - 3, 15, 15);
@@ -2194,7 +2229,6 @@ public class GradesManagementFrame extends JPanel {
         return button;
     }
 
-    // ✅ CORRECTION: Méthode showLevelDetailsDialog corrigée
     private void showLevelDetailsDialog() {
         int selectedRow = classStatsTable.getSelectedRow();
         if (selectedRow < 0) {
@@ -2202,7 +2236,6 @@ public class GradesManagementFrame extends JPanel {
             return;
         }
 
-        // ✅ CORRECTION: Utiliser l'index de la ligne pour récupérer les bonnes statistiques
         if (selectedRow >= currentClassStats.size()) {
             showErrorNotification("Erreur: données de statistiques non disponibles.");
             return;
@@ -2222,15 +2255,12 @@ public class GradesManagementFrame extends JPanel {
         mainPanel.setBackground(CARD_COLOR);
         mainPanel.setBorder(BorderFactory.createEmptyBorder(35, 35, 35, 35));
 
-        // Header with statistics summary
         JPanel summaryPanel = createUltraModernStatsSummaryPanel(stats);
         mainPanel.add(summaryPanel, BorderLayout.NORTH);
 
-        // Student details tabs
         JTabbedPane studentTabs = createUltraModernStudentDetailsTabs(stats);
         mainPanel.add(studentTabs, BorderLayout.CENTER);
 
-        // Close button
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         buttonPanel.setBackground(CARD_COLOR);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(25, 0, 0, 0));
@@ -2253,9 +2283,9 @@ public class GradesManagementFrame extends JPanel {
         summaryPanel.add(createUltraModernStatCard("Niveau", stats.getNiveauNom(), PRIMARY_COLOR, IconType.BOOK));
         summaryPanel.add(createUltraModernStatCard("Moyenne Générale", String.format("%.2f", stats.getMoyenneGenerale()),
                 SUCCESS_COLOR, IconType.CHART));
-        summaryPanel.add(createUltraModernStatCard("Moyenne Max", String.format("%.2f", stats.getMaxMoyenne()), 
+        summaryPanel.add(createUltraModernStatCard("Moyenne Max", String.format("%.2f", stats.getMaxMoyenne()),
                 WARNING_COLOR, IconType.STAR));
-        summaryPanel.add(createUltraModernStatCard("Moyenne Min", String.format("%.2f", stats.getMinMoyenne()), 
+        summaryPanel.add(createUltraModernStatCard("Moyenne Min", String.format("%.2f", stats.getMinMoyenne()),
                 ERROR_COLOR, IconType.CHART));
 
         return summaryPanel;
@@ -2267,23 +2297,20 @@ public class GradesManagementFrame extends JPanel {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Ombre plus prononcée
+
                 g2d.setColor(new Color(0, 0, 0, 25));
                 g2d.fillRoundRect(4, 4, getWidth() - 8, getHeight() - 8, 18, 18);
-                
-                // Gradient background
+
                 GradientPaint gradient = new GradientPaint(
-                    0, 0, CARD_COLOR,
-                    0, getHeight(), new Color(253, 254, 255)
+                        0, 0, CARD_COLOR,
+                        0, getHeight(), new Color(253, 254, 255)
                 );
                 g2d.setPaint(gradient);
                 g2d.fillRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 18, 18);
-                
-                // Accent border avec gradient
+
                 GradientPaint borderGradient = new GradientPaint(
-                    0, 0, accentColor,
-                    getWidth(), getHeight(), accentColor.brighter()
+                        0, 0, accentColor,
+                        getWidth(), getHeight(), accentColor.brighter()
                 );
                 g2d.setPaint(borderGradient);
                 g2d.setStroke(new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
@@ -2297,10 +2324,10 @@ public class GradesManagementFrame extends JPanel {
 
         JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         titlePanel.setBackground(Color.WHITE);
-        
+
         JLabel iconLabel = new JLabel(createVectorIcon(iconType, 20, accentColor));
         titlePanel.add(iconLabel);
-        
+
         JLabel titleLabel = new JLabel(title);
         titleLabel.setFont(getModernFont(Font.BOLD, 16));
         titleLabel.setForeground(TEXT_SECONDARY);
@@ -2323,11 +2350,10 @@ public class GradesManagementFrame extends JPanel {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Gradient background
+
                 GradientPaint gradient = new GradientPaint(
-                    0, 0, CARD_COLOR,
-                    0, getHeight(), new Color(253, 254, 255)
+                        0, 0, CARD_COLOR,
+                        0, getHeight(), new Color(253, 254, 255)
                 );
                 g2d.setPaint(gradient);
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
@@ -2338,11 +2364,9 @@ public class GradesManagementFrame extends JPanel {
         studentTabs.setFont(getModernFont(Font.BOLD, 15));
         studentTabs.setBackground(CARD_COLOR);
 
-        // Top students tab
         JPanel topStudentsPanel = createUltraModernStudentListPanel(stats.getTopStudents(), "Top 5 Étudiants");
         studentTabs.addTab("   Top 5   ", createVectorIcon(IconType.TROPHY, 16, WARNING_COLOR), topStudentsPanel);
 
-        // All students tab
         JPanel allStudentsPanel = createUltraModernStudentListPanel(stats.getAllStudents(), "Tous les Étudiants");
         studentTabs.addTab("   Tous   ", createVectorIcon(IconType.USER, 16, ACCENT_BLUE), allStudentsPanel);
 
@@ -2354,7 +2378,13 @@ public class GradesManagementFrame extends JPanel {
         panel.setBackground(CARD_COLOR);
         panel.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
 
-        String[] columns = {"Matricule", "Prénom", "Nom", "Moyenne", "Statut", "Mention"};
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(getModernFont(Font.BOLD, 20));
+        titleLabel.setForeground(TEXT_PRIMARY);
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+        panel.add(titleLabel, BorderLayout.NORTH);
+
+        String[] columns = {"Matricule", "Prénom", "Nom", "Moyenne", "Mention", "Observation"};
         DefaultTableModel model = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -2363,15 +2393,17 @@ public class GradesManagementFrame extends JPanel {
         };
 
         JTable table = createUltraModernTable(model);
-
         for (StudentAverageDTO student : students) {
+            String mention = getMention(student.getMoyenne());
+            // Remplacement de "non admis" par "redoublant"
+            String observation = "non admis".equals(student.getAdmissionStatus()) ? "redoublant" : student.getAdmissionStatus();
             model.addRow(new Object[]{
-                student.getMatricule(),
-                student.getPrenom(),
-                student.getNom(),
-                String.format("%.2f", student.getMoyenne()),
-                student.getAdmissionStatus(),
-                student.getMention()
+                    student.getMatricule(),
+                    student.getPrenom(),
+                    student.getNom(),
+                    String.format("%.2f", student.getMoyenne()),
+                    mention,
+                    observation
             });
         }
 
@@ -2381,127 +2413,169 @@ public class GradesManagementFrame extends JPanel {
         return panel;
     }
 
-    // Méthodes de validation améliorées
+    private void showSuccessNotification(String message) {
+        JOptionPane optionPane = new JOptionPane(
+                message,
+                JOptionPane.INFORMATION_MESSAGE,
+                JOptionPane.DEFAULT_OPTION,
+                createVectorIcon(IconType.STAR, 32, SUCCESS_COLOR)
+        );
+
+        JDialog dialog = optionPane.createDialog(this, "Succès");
+        dialog.setBackground(CARD_COLOR);
+        dialog.setModal(true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.getContentPane().setBackground(CARD_COLOR);
+        dialog.setSize(400, 200);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void showErrorNotification(String message) {
+        JOptionPane optionPane = new JOptionPane(
+                message,
+                JOptionPane.ERROR_MESSAGE,
+                JOptionPane.DEFAULT_OPTION,
+                createVectorIcon(IconType.CANCEL, 32, ERROR_COLOR)
+        );
+
+        JDialog dialog = optionPane.createDialog(this, "Erreur");
+        dialog.setBackground(CARD_COLOR);
+        dialog.setModal(true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.getContentPane().setBackground(CARD_COLOR);
+        dialog.setSize(400, 200);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
     private void validateGradeField(JTextField field) {
         String text = field.getText().trim();
-        if (!text.isEmpty()) {
-            try {
-                float value = Float.parseFloat(text);
-                if (value < 0 || value > 20) {
-                    field.setBorder(BorderFactory.createCompoundBorder(
-                            new UltraModernBorder(ERROR_COLOR),
-                            BorderFactory.createEmptyBorder(15, 20, 15, 20)));
-                    field.setToolTipText("La note doit être entre 0 et 20");
-                } else {
-                    field.setBorder(BorderFactory.createCompoundBorder(
-                            new UltraModernBorder(SUCCESS_COLOR),
-                            BorderFactory.createEmptyBorder(15, 20, 15, 20)));
-                    field.setToolTipText("Note valide ✓");
-                }
-            } catch (NumberFormatException e) {
-                field.setBorder(BorderFactory.createCompoundBorder(
-                        new UltraModernBorder(ERROR_COLOR),
-                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
-                field.setToolTipText("Veuillez saisir un nombre valide");
-            }
-        } else {
+        if (text.isEmpty()) {
             field.setBorder(BorderFactory.createCompoundBorder(
                     new UltraModernBorder(BORDER_COLOR),
                     BorderFactory.createEmptyBorder(15, 20, 15, 20)));
-            field.setToolTipText("");
+            return;
+        }
+
+        try {
+            double value = Double.parseDouble(text);
+            if (value >= 0 && value <= 20) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new UltraModernBorder(SUCCESS_COLOR),
+                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+            } else {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new UltraModernBorder(ERROR_COLOR),
+                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+            }
+        } catch (NumberFormatException e) {
+            field.setBorder(BorderFactory.createCompoundBorder(
+                    new UltraModernBorder(ERROR_COLOR),
+                    BorderFactory.createEmptyBorder(15, 20, 15, 20)));
         }
     }
 
     private void validateYearField(JTextField field) {
         String text = field.getText().trim();
-        if (!text.isEmpty()) {
-            if (Pattern.matches("\\d{4}", text)) {
-                field.setBorder(BorderFactory.createCompoundBorder(
-                        new UltraModernBorder(SUCCESS_COLOR),
-                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
-                field.setToolTipText("Année valide ✓");
-            } else {
-                field.setBorder(BorderFactory.createCompoundBorder(
-                        new UltraModernBorder(ERROR_COLOR),
-                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
-                field.setToolTipText("L'année doit contenir exactement 4 chiffres");
-            }
-        } else {
+        if (text.isEmpty()) {
             field.setBorder(BorderFactory.createCompoundBorder(
                     new UltraModernBorder(BORDER_COLOR),
                     BorderFactory.createEmptyBorder(15, 20, 15, 20)));
-            field.setToolTipText("");
+            return;
+        }
+
+        if (text.matches("\\d{4}")) {
+            try {
+                int year = Integer.parseInt(text);
+                if (year >= 2000 && year <= 2100) {
+                    field.setBorder(BorderFactory.createCompoundBorder(
+                            new UltraModernBorder(SUCCESS_COLOR),
+                            BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+                } else {
+                    field.setBorder(BorderFactory.createCompoundBorder(
+                            new UltraModernBorder(ERROR_COLOR),
+                            BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+                }
+            } catch (NumberFormatException e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                        new UltraModernBorder(ERROR_COLOR),
+                        BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+            }
+        } else {
+            field.setBorder(BorderFactory.createCompoundBorder(
+                    new UltraModernBorder(ERROR_COLOR),
+                    BorderFactory.createEmptyBorder(15, 20, 15, 20)));
         }
     }
 
-    // Notifications ultra-modernes
-    private void showSuccessNotification(String message) {
-        createUltraModernToastNotification(message, SUCCESS_COLOR, IconType.SAVE);
-    }
+    // Méthode pour ajouter des données (commentée comme demandé)
+    /*
+    private void showAddDataDialog() {
+        JDialog dialog = new UltraModernDialog((Frame) SwingUtilities.getWindowAncestor(this), "Ajouter des Données");
+        dialog.setSize(650, 750);
+        dialog.setLocationRelativeTo(this);
 
-    private void showErrorNotification(String message) {
-        createUltraModernToastNotification(message, ERROR_COLOR, IconType.CANCEL);
-    }
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(CARD_COLOR);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(35, 35, 35, 35));
 
-    private void createUltraModernToastNotification(String message, Color bgColor, IconType iconType) {
-        JWindow toast = new JWindow();
-        toast.setAlwaysOnTop(true);
+        JPanel headerPanel = createUltraModernDialogHeader("Ajouter des Données", "Veuillez remplir les informations", IconType.PLUS);
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
 
-        JPanel panel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
-                // Ombre plus prononcée
-                g2d.setColor(new Color(0, 0, 0, 120));
-                g2d.fillRoundRect(4, 4, getWidth() - 8, getHeight() - 8, 18, 18);
-                
-                // Gradient background
-                GradientPaint gradient = new GradientPaint(
-                    0, 0, bgColor,
-                    0, getHeight(), bgColor.darker()
-                );
-                g2d.setPaint(gradient);
-                g2d.fillRoundRect(0, 0, getWidth() - 4, getHeight() - 4, 18, 18);
-                
-                // Bordure brillante
-                g2d.setColor(new Color(255, 255, 255, 100));
-                g2d.setStroke(new BasicStroke(1));
-                g2d.drawRoundRect(0, 0, getWidth() - 5, getHeight() - 5, 18, 18);
-                g2d.dispose();
-            }
-        };
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(CARD_COLOR);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(18, 0, 18, 0);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
 
-        panel.setLayout(new BorderLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(18, 25, 18, 25));
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel studentLabel = createUltraModernFormLabel("Étudiant *", IconType.USER);
+        formPanel.add(studentLabel, gbc);
 
-        JPanel messagePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
-        messagePanel.setOpaque(false);
-        
-        JLabel iconLabel = new JLabel(createVectorIcon(iconType, 20, Color.WHITE));
-        messagePanel.add(iconLabel);
-        
-        JLabel messageLabel = new JLabel(message);
-        messageLabel.setFont(getModernFont(Font.BOLD, 15));
-        messageLabel.setForeground(Color.WHITE);
-        messagePanel.add(messageLabel);
+        gbc.gridy = 1;
+        JComboBox<Etudiant> studentComboBox = createUltraModernComboBox();
+        studentComboBox.setPreferredSize(new Dimension(500, 50));
+        for (Etudiant student : allStudents) {
+            studentComboBox.addItem(student);
+        }
+        formPanel.add(studentComboBox, gbc);
 
-        panel.add(messagePanel, BorderLayout.CENTER);
-        toast.add(panel);
-        toast.pack();
+        gbc.gridy = 2;
+        JLabel dataLabel = createUltraModernFormLabel("Données *", IconType.NOTES);
+        formPanel.add(dataLabel, gbc);
 
-        // Position at top-right of screen
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        toast.setLocation(screenSize.width - toast.getWidth() - 40, 40);
-        toast.setVisible(true);
+        gbc.gridy = 3;
+        JTextArea dataField = new JTextArea(5, 30);
+        dataField.setFont(getModernFont(Font.PLAIN, 15));
+        dataField.setBorder(BorderFactory.createCompoundBorder(
+                new UltraModernBorder(BORDER_COLOR),
+                BorderFactory.createEmptyBorder(15, 20, 15, 20)));
+        formPanel.add(dataField, gbc);
 
-        // Animation de disparition après 4 secondes
-        Timer timer = new Timer(4000, _ -> {
-            toast.setVisible(false);
-            toast.dispose();
+        mainPanel.add(formPanel, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 0));
+        buttonPanel.setBackground(CARD_COLOR);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(35, 0, 0, 0));
+
+        JButton saveButton = createUltraModernButton("Enregistrer", IconType.SAVE, PRIMARY_COLOR, true);
+        JButton cancelButton = createUltraModernButton("Annuler", IconType.CANCEL, ERROR_COLOR, true);
+
+        saveButton.addActionListener(_ -> {
+            dialog.dispose();
+            showSuccessNotification("Données ajoutées avec succès!");
         });
-        timer.setRepeats(false);
-        timer.start();
+
+        cancelButton.addActionListener(_ -> dialog.dispose());
+
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
     }
+    */
 }

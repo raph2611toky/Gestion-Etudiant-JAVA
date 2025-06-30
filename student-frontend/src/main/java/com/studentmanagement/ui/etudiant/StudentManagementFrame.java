@@ -24,6 +24,7 @@ import com.studentmanagement.model.Matiere;
 import com.studentmanagement.model.Note;
 import com.studentmanagement.service.ApiException;
 import com.studentmanagement.service.StudentService;
+import com.studentmanagement.service.ParameterService;
 import com.studentmanagement.ui.common.MainWindow;
 import com.studentmanagement.ui.common.SidebarUtil;
 
@@ -1921,6 +1922,9 @@ public class StudentManagementFrame extends JPanel {
 
     // Amélioration 6: Contenu réel pour la visualisation des notes
     private JPanel createUltraModernNotesViewPanel(Etudiant etudiant) {
+
+        loadNiveauxAndParcours();
+        loadStudents();
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(CARD_COLOR);
         panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
@@ -1964,6 +1968,9 @@ public class StudentManagementFrame extends JPanel {
 
     // Amélioration 7: Contenu réel pour les statistiques
     private JPanel createUltraModernStatsPanel(Etudiant etudiant) {
+
+        loadNiveauxAndParcours();
+        loadStudents();
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(CARD_COLOR);
         panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
