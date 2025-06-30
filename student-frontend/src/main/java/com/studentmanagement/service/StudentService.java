@@ -585,4 +585,26 @@ public class StudentService {
             throw new ApiException("Une erreur inattendue s'est produite.", ex);
         }
     }
+
+    public List<Matiere> getAllMatieresByNiveau(String niveauId) {
+        try {
+            HttpEntity<?> request = new HttpEntity<>(createHeaders());
+            ResponseEntity<Matiere[]> response = restTemplate.exchange(
+                    MATIERES_API + "/niveau/" + niveauId,
+                    HttpMethod.GET,
+                    request,
+                    Matiere[].class);
+            return Arrays.asList(response.getBody() != null ? response.getBody() : new Matiere[0]);
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return new ArrayList<>();
+            } else if (ex.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new ApiException("Non autorisé. Veuillez vous reconnecter.");
+            } else {
+                throw new ApiException("Erreur lors du chargement des matières.", ex);
+            }
+        } catch (Exception ex) {
+            throw new ApiException("Une erreur inattendue s'est produite.", ex);
+        }
+    }
 }
