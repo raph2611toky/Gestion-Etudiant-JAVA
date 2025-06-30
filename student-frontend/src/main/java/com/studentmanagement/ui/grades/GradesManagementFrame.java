@@ -290,12 +290,13 @@ public class GradesManagementFrame extends JPanel {
     private JPanel createMainContent() {
         JPanel mainContent = new JPanel(new BorderLayout());
         mainContent.setBackground(BACKGROUND_COLOR);
-        mainContent.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        mainContent.setBorder(BorderFactory.createEmptyBorder(0, 15, 15, 15));
 
         JPanel headerPanel = createUltraModernHeaderPanel();
         mainContent.add(headerPanel, BorderLayout.NORTH);
 
         JTabbedPane tabbedPane = createUltraModernTabbedPane();
+        tabbedPane.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
         mainContent.add(tabbedPane, BorderLayout.CENTER);
 
         return mainContent;
@@ -322,19 +323,21 @@ public class GradesManagementFrame extends JPanel {
         };
 
         header.setLayout(new BorderLayout());
-        header.setBorder(BorderFactory.createEmptyBorder(35, 30, 35, 30));
+        header.setBorder(BorderFactory.createEmptyBorder(0, 15, 10, 15)); // Top padding set to 0
 
         JPanel titleSection = new JPanel();
         titleSection.setLayout(new BoxLayout(titleSection, BoxLayout.Y_AXIS));
         titleSection.setOpaque(false);
+        titleSection.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0)); // No padding
 
         JPanel titleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         titleRow.setOpaque(false);
+        titleRow.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0)); // No padding
 
-        JLabel iconLabel = new JLabel(createVectorIcon(IconType.NOTES, 40, PRIMARY_COLOR));
-        iconLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        JLabel iconLabel = new JLabel(createVectorIcon(IconType.NOTES, 30, PRIMARY_COLOR));
+        iconLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 5)); // Minimal padding
         titleRow.add(iconLabel);
-        titleRow.add(Box.createHorizontalStrut(20));
+        titleRow.add(Box.createHorizontalStrut(10)); // Reduced strut
 
         JLabel titleLabel = new JLabel("Gestion des Notes");
         titleLabel.setFont(getModernFont(Font.BOLD, 27));
@@ -362,7 +365,7 @@ public class GradesManagementFrame extends JPanel {
         badgeLabel.setPreferredSize(new Dimension(40, 20));
         badgeLabel.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
 
-        titleRow.add(Box.createHorizontalStrut(15));
+        titleRow.add(Box.createHorizontalStrut(10)); // Reduced strut
         titleRow.add(badgeLabel);
 
         titleSection.add(titleRow);
@@ -920,7 +923,7 @@ public class GradesManagementFrame extends JPanel {
                 g2d.dispose();
             }
         };
-        statsPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        statsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JPanel filterPanel = createUltraModernStatsFilterPanel();
         statsPanel.add(filterPanel, BorderLayout.NORTH);
@@ -951,16 +954,18 @@ public class GradesManagementFrame extends JPanel {
             }
         };
 
-        filterPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 20, 0));
-        filterPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+        filterPanel.setLayout(new BoxLayout(filterPanel, BoxLayout.X_AXIS)); // Horizontal BoxLayout to prevent wrapping
+        filterPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10)); // Reduced padding
+        filterPanel.setOpaque(false);
 
         JLabel niveauLabel = new JLabel("Niveau");
-        niveauLabel.setFont(getModernFont(Font.BOLD, 15));
+        niveauLabel.setFont(getModernFont(Font.BOLD, 14));
         niveauLabel.setForeground(TEXT_PRIMARY);
-        niveauLabel.setIcon(createVectorIcon(IconType.BOOK, 18, ACCENT_PURPLE));
-        niveauLabel.setIconTextGap(10);
+        niveauLabel.setIcon(createVectorIcon(IconType.BOOK, 16, ACCENT_PURPLE));
+        niveauLabel.setIconTextGap(8);
 
         niveauComboBox = createUltraModernStringComboBox();
+        niveauComboBox.setPreferredSize(new Dimension(120, 35)); // Reduced width
         niveauComboBox.addItem("Tous");
         if (allNiveaux != null) {
             for (Niveau niveau : allNiveaux) {
@@ -970,12 +975,13 @@ public class GradesManagementFrame extends JPanel {
         niveauComboBox.addActionListener(_ -> loadStatistics());
 
         JLabel parcoursLabel = new JLabel("Parcours");
-        parcoursLabel.setFont(getModernFont(Font.BOLD, 15));
+        parcoursLabel.setFont(getModernFont(Font.BOLD, 14));
         parcoursLabel.setForeground(TEXT_PRIMARY);
-        parcoursLabel.setIcon(createVectorIcon(IconType.TARGET, 18, ACCENT_PINK));
-        parcoursLabel.setIconTextGap(10);
+        parcoursLabel.setIcon(createVectorIcon(IconType.TARGET, 16, ACCENT_PINK));
+        parcoursLabel.setIconTextGap(8);
 
         parcoursComboBox = createUltraModernStringComboBox();
+        parcoursComboBox.setPreferredSize(new Dimension(120, 35)); // Reduced width
         parcoursComboBox.addItem("Tous");
         if (allParcours != null) {
             for (Parcours parcours : allParcours) {
@@ -985,60 +991,67 @@ public class GradesManagementFrame extends JPanel {
         parcoursComboBox.addActionListener(_ -> loadStatistics());
 
         JLabel semestreLabel = new JLabel("Semestre");
-        semestreLabel.setFont(getModernFont(Font.BOLD, 15));
+        semestreLabel.setFont(getModernFont(Font.BOLD, 14));
         semestreLabel.setForeground(TEXT_PRIMARY);
-        semestreLabel.setIcon(createVectorIcon(IconType.FILTER, 18, ACCENT_BLUE));
-        semestreLabel.setIconTextGap(10);
+        semestreLabel.setIcon(createVectorIcon(IconType.FILTER, 16, ACCENT_BLUE));
+        semestreLabel.setIconTextGap(8);
 
         semestreComboBox = createUltraModernStringComboBox();
+        semestreComboBox.setPreferredSize(new Dimension(100, 35)); // Reduced width
         semestreComboBox.addItem("");
         semestreComboBox.addItem("S1");
         semestreComboBox.addItem("S2");
         semestreComboBox.addActionListener(_ -> loadStatistics());
 
-        JLabel anneeLabel = new JLabel("Année Académique");
-        anneeLabel.setFont(getModernFont(Font.BOLD, 15));
+        JLabel anneeLabel = new JLabel("Année");
+        anneeLabel.setFont(getModernFont(Font.BOLD, 14));
         anneeLabel.setForeground(TEXT_PRIMARY);
-        anneeLabel.setIcon(createVectorIcon(IconType.ACADEMIC, 18, ACCENT_PURPLE));
-        anneeLabel.setIconTextGap(10);
+        anneeLabel.setIcon(createVectorIcon(IconType.ACADEMIC, 16, ACCENT_PURPLE));
+        anneeLabel.setIconTextGap(8);
 
         anneeComboBox = createUltraModernStringComboBox();
+        anneeComboBox.setPreferredSize(new Dimension(120, 35)); // Reduced width
         anneeComboBox.addItem("");
         anneeComboBox.addItem("2023-2024");
         anneeComboBox.addItem("2024-2025");
         anneeComboBox.addItem("2025-2026");
         anneeComboBox.addActionListener(_ -> loadStatistics());
 
-        // NOUVEAU: Bouton pour recalculer les statistiques
-        JButton calculateStatsButton = createUltraModernButton("Recalculer Statistiques", IconType.REFRESH, SUCCESS_COLOR, true);
-        calculateStatsButton.setPreferredSize(new Dimension(200, 40));
+        JButton calculateStatsButton = createUltraModernButton("Recalculer", IconType.REFRESH, SUCCESS_COLOR, true);
+        calculateStatsButton.setPreferredSize(new Dimension(120, 35)); // Reduced width
         calculateStatsButton.addActionListener(_ -> {
             calculateClassStatistics();
             showSuccessNotification("Statistiques recalculées avec succès!");
         });
 
-        JButton loadStatsButton = createUltraModernButton("Analyser les Données", IconType.CHART, SECONDARY_COLOR,
-                false);
-        loadStatsButton.setPreferredSize(new Dimension(180, 40));
+        JButton loadStatsButton = createUltraModernButton("Analyser", IconType.CHART, SECONDARY_COLOR, false);
+        loadStatsButton.setPreferredSize(new Dimension(120, 35)); // Reduced width
         loadStatsButton.addActionListener(_ -> {
             loadStatistics();
             showSuccessNotification("Statistiques mises à jour!");
         });
 
+        // Add components with minimal spacing
         filterPanel.add(niveauLabel);
+        filterPanel.add(Box.createHorizontalStrut(5));
         filterPanel.add(niveauComboBox);
-        filterPanel.add(Box.createHorizontalStrut(20));
+        filterPanel.add(Box.createHorizontalStrut(10));
         filterPanel.add(parcoursLabel);
+        filterPanel.add(Box.createHorizontalStrut(5));
         filterPanel.add(parcoursComboBox);
-        filterPanel.add(Box.createHorizontalStrut(20));
+        filterPanel.add(Box.createHorizontalStrut(10));
         filterPanel.add(semestreLabel);
+        filterPanel.add(Box.createHorizontalStrut(5));
         filterPanel.add(semestreComboBox);
-        filterPanel.add(Box.createHorizontalStrut(20));
+        filterPanel.add(Box.createHorizontalStrut(10));
         filterPanel.add(anneeLabel);
+        filterPanel.add(Box.createHorizontalStrut(5));
         filterPanel.add(anneeComboBox);
-        filterPanel.add(Box.createHorizontalStrut(20));
+        filterPanel.add(Box.createHorizontalStrut(10));
         filterPanel.add(calculateStatsButton);
+        filterPanel.add(Box.createHorizontalStrut(5));
         filterPanel.add(loadStatsButton);
+        filterPanel.add(Box.createHorizontalGlue()); // Push components to the left
 
         return filterPanel;
     }
